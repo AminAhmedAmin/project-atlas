@@ -1,0 +1,17 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.idea/
+**/App_Data/
+**/*.db
+**/*.db-shm
+**/*.db-wal
+**/TestResults/
+**/node_modules/
+.git/
+.github/
+tests/
+*.md
+docker-compose*.yml
+.env

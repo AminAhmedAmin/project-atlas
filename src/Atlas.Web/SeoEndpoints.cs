@@ -12,8 +12,8 @@ internal static class SeoEndpoints
         endpoints.MapGet("/sitemap.xml", (HttpRequest request) =>
         {
             var baseUrl = $"{request.Scheme}://{request.Host}";
-            var builder = new StringBuilder();
-            using (var writer = XmlWriter.Create(builder, new XmlWriterSettings { Indent = true }))
+            using var stream = new MemoryStream();
+            using (var writer = XmlWriter.Create(stream, new XmlWriterSettings { Indent = true, Encoding = new UTF8Encoding(false) }))
             {
                 writer.WriteStartElement("urlset", "http://www.sitemaps.org/schemas/sitemap/0.9");
                 foreach (var path in PublicPaths)
@@ -26,7 +26,7 @@ internal static class SeoEndpoints
                 writer.WriteEndElement();
             }
 
-            return Results.Text(builder.ToString(), "application/xml", Encoding.UTF8);
+            return Results.Bytes(stream.ToArray(), "application/xml; charset=utf-8");
         }).ExcludeFromDescription();
 
         return endpoints;

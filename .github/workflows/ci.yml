@@ -40,3 +40,12 @@ jobs:
         with:
           name: test-results
           path: TestResults
+
+  docker-image:
+    runs-on: ubuntu-latest
+    needs: build-and-test
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build container image
+        run: docker build --file src/Atlas.Web/Dockerfile --tag atlas-web:ci .

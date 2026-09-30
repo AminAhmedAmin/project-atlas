@@ -19,6 +19,9 @@ public static class DependencyInjection
 {
     public const string ConnectionStringName = "DefaultConnection";
 
+    /// <summary>Tag for health checks that verify external dependencies (used by /health).</summary>
+    public const string ReadinessTag = "ready";
+
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         ArgumentNullException.ThrowIfNull(configuration);
@@ -70,6 +73,9 @@ public static class DependencyInjection
         services.AddSingleton<IFileStorage, LocalFileStorage>();
         services.AddSingleton<IEmailSender, LoggingEmailSender>();
         services.AddScoped<DatabaseSeeder>();
+
+        services.AddHealthChecks()
+            .AddDbContextCheck<AtlasDbContext>("database", tags: [ReadinessTag]);
 
         return services;
     }
