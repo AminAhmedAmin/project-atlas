@@ -1,0 +1,24 @@
+<a href="/" class="brand-logo" aria-label="@Settings.CompanyName home">
+    @if (!string.IsNullOrWhiteSpace(Settings.LogoUrl))
+    {
+        <img src="@Settings.LogoUrl" alt="@Settings.CompanyName" height="@Height" />
+    }
+    else
+    {
+        <span class="brand-mark" style="background:@Settings.PrimaryColor">@Initial</span>
+    }
+    @if (ShowName)
+    {
+        <span class="brand-name">@Settings.CompanyName</span>
+    }
+</a>
+
+@code {
+    [Parameter, EditorRequired] public SiteSettingsDto Settings { get; set; } = default!;
+
+    [Parameter] public bool ShowName { get; set; } = true;
+
+    [Parameter] public int Height { get; set; } = 36;
+
+    private string Initial => string.IsNullOrEmpty(Settings.CompanyName) ? "?" : Settings.CompanyName[..1].ToUpperInvariant();
+}

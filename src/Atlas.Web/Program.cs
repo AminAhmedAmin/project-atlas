@@ -1,5 +1,7 @@
 using Atlas.Application;
 using Atlas.Infrastructure;
+using Atlas.Web;
+using Atlas.Web.Branding;
 using Atlas.Web.Components;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
@@ -18,6 +20,8 @@ builder.Services.AddAuthorization();
 builder.Services.AddMudServices();
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddSingleton<UseCases>();
+builder.Services.AddSingleton<BrandingService>();
 
 var app = builder.Build();
 
@@ -42,6 +46,7 @@ app.UseStaticFiles(new StaticFileOptions
 app.UseAntiforgery();
 
 app.MapStaticAssets();
+app.MapSeoEndpoints();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 

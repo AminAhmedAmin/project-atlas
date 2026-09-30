@@ -1,0 +1,32 @@
+@inject NavigationManager Navigation
+
+<PageTitle>@FullTitle</PageTitle>
+<HeadContent>
+    @if (!string.IsNullOrWhiteSpace(Description))
+    {
+        <meta name="description" content="@Description" />
+        <meta property="og:description" content="@Description" />
+    }
+    <meta property="og:title" content="@FullTitle" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="@CompanyName" />
+    <meta property="og:url" content="@CanonicalUrl" />
+    <link rel="canonical" href="@CanonicalUrl" />
+</HeadContent>
+
+@code {
+    /// <summary>Page-specific title. Omit on the home page to show only the company name and tagline.</summary>
+    [Parameter] public string? Title { get; set; }
+
+    [Parameter] public string? Description { get; set; }
+
+    [Parameter, EditorRequired] public string CompanyName { get; set; } = string.Empty;
+
+    [Parameter] public string? Tagline { get; set; }
+
+    private string FullTitle => string.IsNullOrWhiteSpace(Title)
+        ? (string.IsNullOrWhiteSpace(Tagline) ? CompanyName : $"{CompanyName} | {Tagline}")
+        : $"{Title} | {CompanyName}";
+
+    private string CanonicalUrl => Navigation.Uri.Split('?', '#')[0];
+}

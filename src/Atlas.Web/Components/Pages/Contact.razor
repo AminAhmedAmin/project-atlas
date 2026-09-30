@@ -1,0 +1,184 @@
+@page "/contact"
+@using System.ComponentModel.DataAnnotations
+@using ContactMessageEntity = Atlas.Domain.Contact.ContactMessage
+@inject BrandingService Branding
+@inject UseCases UseCases
+
+@if (Settings is not null && Page is not null)
+{
+    <SeoHead Title="@Render(Page.Title)" Description="@Page.MetaDescription" CompanyName="@Settings.CompanyName" />
+
+    <PageHeader Title="@Render(Page.Title)" Subtitle="@Render(Page.Subtitle)" />
+
+    <section class="section">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudGrid Spacing="8">
+                <MudItem xs="12" md="7">
+                    @if (_sent)
+                    {
+                        <MudPaper Class="pa-8 text-center" Outlined="true" Elevation="0">
+                            <MudIcon Icon="@Icons.Material.Outlined.MarkEmailRead" Color="Color.Success" Style="font-size:3rem" />
+                            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mt-4 mb-2">Thank you!</MudText>
+                            <MudText Typo="Typo.body1" Class="mb-6">Your message has been sent. We will get back to you soon.</MudText>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Reset">Send another message</MudButton>
+                        </MudPaper>
+                    }
+                    else
+                    {
+                        <EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="contact">
+                            <DataAnnotationsValidator />
+                            <MudPaper Class="pa-6 pa-md-8" Outlined="true" Elevation="0">
+                                <MudGrid Spacing="3">
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField @bind-Value="_model.Name" For="() => _model.Name" Label="Name" Variant="Variant.Outlined"
+                                                      MaxLength="ContactMessageEntity.NameMaxLength" autocomplete="name" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField @bind-Value="_model.Email" For="() => _model.Email" Label="E-mail" Variant="Variant.Outlined"
+                                                      InputType="InputType.Email" autocomplete="email" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="_model.Subject" For="() => _model.Subject" Label="Subject (optional)" Variant="Variant.Outlined"
+                                                      MaxLength="ContactMessageEntity.SubjectMaxLength" />
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudTextField @bind-Value="_model.Message" For="() => _model.Message" Label="Message" Variant="Variant.Outlined"
+                                                      Lines="6" Sizing="InputSizing.Auto" MaxLength="ContactMessageEntity.MessageMaxLength" Counter="ContactMessageEntity.MessageMaxLength" />
+                                    </MudItem>
+                                    @* Honeypot: hidden from people, often filled in by bots. *@
+                                    <div class="hp-field" aria-hidden="true">
+                                        <label for="website">Website</label>
+                                        <input id="website" name="website" tabindex="-1" autocomplete="off" @bind="_model.Website" />
+                                    </div>
+                                    @if (_error is not null)
+                                    {
+                                        <MudItem xs="12">
+                                            <MudAlert Severity="Severity.Error" Dense="true">@_error</MudAlert>
+                                        </MudItem>
+                                    }
+                                    <MudItem xs="12">
+                                        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                                                   Disabled="_submitting" DropShadow="false" EndIcon="@Icons.Material.Filled.Send">
+                                            @(_submitting ? "Sending…" : "Send message")
+                                        </MudButton>
+                                    </MudItem>
+                                </MudGrid>
+                            </MudPaper>
+                        </EditForm>
+                    }
+                </MudItem>
+                <MudItem xs="12" md="5">
+                    <div class="contact-aside">
+                        @if (!string.IsNullOrWhiteSpace(Page.Body))
+                        {
+                            @foreach (var paragraph in ContentText.Paragraphs(Page.Body, Settings.CompanyName))
+                            {
+                                <MudText Typo="Typo.body1" Class="mb-4">@paragraph</MudText>
+                            }
+                        }
+                        @if (!string.IsNullOrWhiteSpace(Settings.ContactEmail))
+                        {
+                            <div class="d-flex align-center gap-3 mt-4">
+                                <MudIcon Icon="@Icons.Material.Outlined.Email" Color="Color.Primary" />
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">Prefer e-mail?</MudText>
+                                    <a href="mailto:@Settings.ContactEmail">@Settings.ContactEmail</a>
+                                </div>
+                            </div>
+                        }
+                        <div class="d-flex align-center gap-3 mt-4">
+                            <MudIcon Icon="@Icons.Material.Outlined.Schedule" Color="Color.Primary" />
+                            <MudText Typo="Typo.body2">We usually reply within one business day.</MudText>
+                        </div>
+                    </div>
+                </MudItem>
+            </MudGrid>
+        </MudContainer>
+    </section>
+}
+
+@code {
+    private static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(20);
+
+    private ContactFormModel _model = new();
+    private bool _sent;
+    private bool _submitting;
+    private string? _error;
+    private DateTime _lastSubmittedUtc = DateTime.MinValue;
+
+    [PersistentState] public SiteSettingsDto? Settings { get; set; }
+
+    [PersistentState] public PageContentDto? Page { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Settings ??= await Branding.GetAsync();
+        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact));
+    }
+
+    private async Task SubmitAsync()
+    {
+        _error = null;
+
+        if (!string.IsNullOrEmpty(_model.Website))
+        {
+            _sent = true; // Silently drop bot submissions.
+            return;
+        }
+
+        if (DateTime.UtcNow - _lastSubmittedUtc < Cooldown)
+        {
+            _error = "Please wait a few seconds before sending another message.";
+            return;
+        }
+
+        _submitting = true;
+        try
+        {
+            var result = await UseCases.SendAsync<SubmitContactMessageCommand, Guid>(
+                new SubmitContactMessageCommand(_model.Name, _model.Email, _model.Subject, _model.Message));
+
+            if (result.IsSuccess)
+            {
+                _lastSubmittedUtc = DateTime.UtcNow;
+                _sent = true;
+            }
+            else
+            {
+                _error = result.ErrorMessage;
+            }
+        }
+        finally
+        {
+            _submitting = false;
+        }
+    }
+
+    private void Reset()
+    {
+        _model = new ContactFormModel();
+        _sent = false;
+    }
+
+    private string Render(string? text) => ContentText.Render(text, Settings?.CompanyName ?? string.Empty);
+
+    private sealed class ContactFormModel
+    {
+        [Required(ErrorMessage = "Please enter your name.")]
+        [StringLength(ContactMessageEntity.NameMaxLength)]
+        public string Name { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Please enter your e-mail address.")]
+        [EmailAddress(ErrorMessage = "Please enter a valid e-mail address.")]
+        public string Email { get; set; } = string.Empty;
+
+        [StringLength(ContactMessageEntity.SubjectMaxLength)]
+        public string? Subject { get; set; }
+
+        [Required(ErrorMessage = "Please enter a message.")]
+        [StringLength(ContactMessageEntity.MessageMaxLength)]
+        public string Message { get; set; } = string.Empty;
+
+        public string? Website { get; set; }
+    }
+}

@@ -1,5 +1,109 @@
 @page "/"
+@inject BrandingService Branding
+@inject UseCases UseCases
 
-<PageTitle>Home</PageTitle>
+@if (Settings is not null && Page is not null && Services is not null)
+{
+    <SeoHead CompanyName="@Settings.CompanyName" Tagline="@Settings.Tagline" Description="@Page.MetaDescription" />
 
-<MudText Typo="Typo.h3">Site under construction</MudText>
+    <section class="hero">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <div class="hero-content">
+                <MudText Typo="Typo.h2" HtmlTag="h1" Class="hero-title">@Render(Page.Title)</MudText>
+                @if (!string.IsNullOrWhiteSpace(Page.Subtitle))
+                {
+                    <MudText Typo="Typo.h6" HtmlTag="p" Class="hero-subtitle">@Render(Page.Subtitle)</MudText>
+                }
+                <div class="hero-actions">
+                    @if (!string.IsNullOrWhiteSpace(Page.CallToActionText) && !string.IsNullOrWhiteSpace(Page.CallToActionUrl))
+                    {
+                        <MudButton Href="@Page.CallToActionUrl" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                                   EndIcon="@Icons.Material.Filled.ArrowForward" DropShadow="false">
+                            @Page.CallToActionText
+                        </MudButton>
+                    }
+                    @if (Services.Count > 0)
+                    {
+                        <MudButton Href="/services" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large">
+                            Explore services
+                        </MudButton>
+                    }
+                </div>
+            </div>
+        </MudContainer>
+    </section>
+
+    @if (Services.Count > 0)
+    {
+        <section class="section">
+            <MudContainer MaxWidth="MaxWidth.Large">
+                <div class="section-heading">
+                    <MudText Typo="Typo.overline" Color="Color.Primary">What we do</MudText>
+                    <MudText Typo="Typo.h4" HtmlTag="h2">Services</MudText>
+                </div>
+                <div class="card-grid">
+                    @foreach (var service in Services.Take(6))
+                    {
+                        <ServiceCard Service="service" CompanyName="@Settings.CompanyName" />
+                    }
+                </div>
+                @if (Services.Count > 6)
+                {
+                    <div class="d-flex justify-center mt-8">
+                        <MudButton Href="/services" Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward">
+                            View all services
+                        </MudButton>
+                    </div>
+                }
+            </MudContainer>
+        </section>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(Page.Body))
+    {
+        <section class="section section-alt">
+            <MudContainer MaxWidth="MaxWidth.Medium" Class="text-center">
+                @foreach (var paragraph in ContentText.Paragraphs(Page.Body, Settings.CompanyName))
+                {
+                    <MudText Typo="Typo.h6" HtmlTag="p" Class="lead-text">@paragraph</MudText>
+                }
+            </MudContainer>
+        </section>
+    }
+
+    @if (Contact is not null)
+    {
+        <section class="cta-band">
+            <MudContainer MaxWidth="MaxWidth.Medium" Class="text-center">
+                <MudText Typo="Typo.h4" HtmlTag="h2" Class="mb-3">@Render(Contact.Title)</MudText>
+                @if (!string.IsNullOrWhiteSpace(Contact.Subtitle))
+                {
+                    <MudText Typo="Typo.body1" Class="mb-6">@Render(Contact.Subtitle)</MudText>
+                }
+                <MudButton Href="/contact" Variant="Variant.Filled" Size="Size.Large" Class="cta-band-button" DropShadow="false">
+                    Contact us
+                </MudButton>
+            </MudContainer>
+        </section>
+    }
+}
+
+@code {
+    [PersistentState] public SiteSettingsDto? Settings { get; set; }
+
+    [PersistentState] public PageContentDto? Page { get; set; }
+
+    [PersistentState] public PageContentDto? Contact { get; set; }
+
+    [PersistentState] public List<ServiceDto>? Services { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Settings ??= await Branding.GetAsync();
+        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Home));
+        Contact ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact));
+        Services ??= (await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: true))).ToList();
+    }
+
+    private string Render(string? text) => ContentText.Render(text, Settings?.CompanyName ?? string.Empty);
+}

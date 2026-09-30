@@ -1,0 +1,15 @@
+<section class="page-header">
+    <MudContainer MaxWidth="MaxWidth.Large">
+        <MudText Typo="Typo.h3" HtmlTag="h1" Class="mb-3">@Title</MudText>
+        @if (!string.IsNullOrWhiteSpace(Subtitle))
+        {
+            <MudText Typo="Typo.subtitle1" Class="page-header-subtitle">@Subtitle</MudText>
+        }
+    </MudContainer>
+</section>
+
+@code {
+    [Parameter, EditorRequired] public string Title { get; set; } = string.Empty;
+
+    [Parameter] public string? Subtitle { get; set; }
+}

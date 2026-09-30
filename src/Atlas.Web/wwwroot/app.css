@@ -1,16 +1,267 @@
+/* ---------- Base ---------- */
 html, body {
-    font-family: 'Inter', 'Helvetica Neue', Arial, sans-serif;
+    font-family: 'Inter', 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
 }
 
 h1:focus {
     outline: none;
 }
 
+a {
+    color: var(--mud-palette-primary);
+}
+
+.text-secondary {
+    color: var(--mud-palette-text-secondary);
+}
+
+.text-center {
+    text-align: center;
+}
+
+/* ---------- Brand ---------- */
+.brand-logo {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    color: inherit;
+    text-decoration: none;
+}
+
+.brand-logo img {
+    display: block;
+    max-width: 180px;
+    object-fit: contain;
+}
+
+.brand-mark {
+    display: inline-grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 700;
+    font-size: 1.1rem;
+}
+
+.brand-name {
+    font-weight: 700;
+    font-size: 1.15rem;
+    letter-spacing: -0.01em;
+}
+
+/* ---------- Public layout ---------- */
+.public-appbar {
+    border-bottom: 1px solid var(--mud-palette-lines-default);
+    backdrop-filter: saturate(180%) blur(8px);
+}
+
+.public-nav {
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.public-nav-link {
+    padding: 0.5rem 0.9rem;
+    border-radius: 8px;
+    color: var(--mud-palette-text-primary);
+    font-weight: 500;
+    text-decoration: none;
+    transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+.public-nav-link:hover {
+    background-color: var(--mud-palette-action-default-hover);
+}
+
+.public-nav-link.active {
+    color: var(--mud-palette-primary);
+}
+
+.public-main {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.public-footer {
+    margin-top: auto;
+    padding: 3.5rem 0 2rem;
+    background: var(--mud-palette-background-gray);
+    border-top: 1px solid var(--mud-palette-lines-default);
+}
+
+.footer-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 2rem;
+}
+
+.footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.footer-links a,
+.footer-admin-link {
+    color: var(--mud-palette-text-secondary);
+    text-decoration: none;
+}
+
+.footer-links a:hover,
+.footer-admin-link:hover {
+    color: var(--mud-palette-primary);
+}
+
+.footer-admin-link {
+    font-size: 0.75rem;
+}
+
+/* ---------- Sections ---------- */
+.hero {
+    padding: 6rem 0 5rem;
+    background:
+        radial-gradient(1200px 500px at 85% -10%, color-mix(in srgb, var(--mud-palette-primary) 18%, transparent), transparent 70%),
+        linear-gradient(180deg, color-mix(in srgb, var(--mud-palette-primary) 6%, var(--mud-palette-background)) 0%, var(--mud-palette-background) 100%);
+}
+
+.hero-content {
+    max-width: 760px;
+}
+
+.hero-title {
+    font-size: clamp(2.1rem, 5vw, 3.75rem) !important;
+    letter-spacing: -0.02em;
+    line-height: 1.1 !important;
+    margin-bottom: 1.25rem;
+}
+
+.hero-subtitle {
+    color: var(--mud-palette-text-secondary);
+    font-weight: 400 !important;
+    line-height: 1.6 !important;
+    margin-bottom: 2rem;
+}
+
+.hero-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+}
+
+.page-header {
+    padding: 4.5rem 0 3rem;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--mud-palette-primary) 7%, var(--mud-palette-background)) 0%, var(--mud-palette-background) 100%);
+}
+
+.page-header-subtitle {
+    color: var(--mud-palette-text-secondary);
+    max-width: 680px;
+    font-size: 1.15rem !important;
+}
+
+.section {
+    padding: 4.5rem 0;
+}
+
+.section-alt {
+    background: var(--mud-palette-background-gray);
+}
+
+.section-heading {
+    margin-bottom: 2.5rem;
+}
+
+.lead-text {
+    font-weight: 400 !important;
+    line-height: 1.7 !important;
+    margin-bottom: 1rem;
+}
+
+.prose {
+    max-width: 760px;
+}
+
+.about-paragraph {
+    font-size: 1.1rem !important;
+    line-height: 1.8 !important;
+}
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+    gap: 1.5rem;
+}
+
+.service-card {
+    height: 100%;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+}
+
+.service-card:hover {
+    transform: translateY(-3px);
+    border-color: color-mix(in srgb, var(--mud-palette-primary) 40%, transparent);
+    box-shadow: 0 12px 30px -12px color-mix(in srgb, var(--mud-palette-primary) 35%, transparent);
+}
+
+.service-icon {
+    display: inline-grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 14px;
+    background: color-mix(in srgb, var(--mud-palette-primary) 12%, transparent);
+}
+
+.cta-band {
+    padding: 4rem 0;
+    color: #fff;
+    background: linear-gradient(135deg, var(--mud-palette-primary) 0%, color-mix(in srgb, var(--mud-palette-primary) 70%, #000) 100%);
+}
+
+.cta-band-button {
+    background: #fff !important;
+    color: var(--mud-palette-primary) !important;
+}
+
+.contact-aside {
+    padding-top: 0.5rem;
+}
+
+/* Visually hidden honeypot field (kept in the DOM for bots). */
+.hp-field {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 959.98px) {
+    .hero {
+        padding: 4rem 0 3.5rem;
+    }
+
+    .footer-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .section {
+        padding: 3rem 0;
+    }
+}
+
+/* ---------- Blazor error UI ---------- */
 #blazor-error-ui {
     background: lightyellow;
     bottom: 0;
     box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
     box-sizing: border-box;
+    color: #000;
     display: none;
     left: 0;
     padding: 0.6rem 1.25rem 0.7rem 1.25rem;
