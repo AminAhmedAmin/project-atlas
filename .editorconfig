@@ -17,6 +17,9 @@ csharp_style_var_for_built_in_types = true:suggestion
 csharp_style_var_when_type_is_apparent = true:suggestion
 dotnet_sort_system_directives_first = true
 
+# C#-only codebase: names like Error or Contact need not avoid VB keywords.
+dotnet_diagnostic.CA1716.severity = none
+
 # Tests use underscores in method names.
 [tests/**.cs]
 dotnet_diagnostic.CA1707.severity = none

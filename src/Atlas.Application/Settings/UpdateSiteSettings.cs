@@ -1,0 +1,56 @@
+using Atlas.Application.Abstractions;
+using Atlas.Application.Common;
+using Atlas.Domain.Common;
+using Atlas.Domain.Settings;
+
+namespace Atlas.Application.Settings;
+
+public sealed record UpdateSiteSettingsCommand(
+    string CompanyName,
+    string? Tagline,
+    string PrimaryColor,
+    string? ContactEmail);
+
+public sealed class UpdateSiteSettingsValidator : IValidator<UpdateSiteSettingsCommand>
+{
+    public IReadOnlyList<Error> Validate(UpdateSiteSettingsCommand instance) => new ValidationErrors()
+        .Required(instance.CompanyName, nameof(instance.CompanyName), "Company name", SiteSettings.CompanyNameMaxLength)
+        .Optional(instance.Tagline, nameof(instance.Tagline), "Tagline", SiteSettings.TaglineMaxLength)
+        .Must(HexColor.TryCreate(instance.PrimaryColor, out _), nameof(instance.PrimaryColor), "Primary color must be in #RRGGBB format.")
+        .Email(instance.ContactEmail, nameof(instance.ContactEmail), "Contact e-mail", required: false)
+        .Errors;
+}
+
+public sealed class UpdateSiteSettingsHandler(
+    ISiteSettingsRepository repository,
+    IUnitOfWork unitOfWork,
+    IValidator<UpdateSiteSettingsCommand> validator,
+    TimeProvider timeProvider) : ICommandHandler<UpdateSiteSettingsCommand, SiteSettingsDto>
+{
+    public async Task<Result<SiteSettingsDto>> HandleAsync(UpdateSiteSettingsCommand command, CancellationToken cancellationToken = default)
+    {
+        var errors = validator.Validate(command);
+        if (errors.Count > 0)
+        {
+            return Result.Failure<SiteSettingsDto>(errors);
+        }
+
+        var color = HexColor.Create(command.PrimaryColor);
+        var email = string.IsNullOrWhiteSpace(command.ContactEmail) ? null : EmailAddress.Create(command.ContactEmail);
+        var now = timeProvider.UtcNow();
+
+        var settings = await repository.GetAsync(cancellationToken);
+        if (settings is null)
+        {
+            settings = SiteSettings.Create(command.CompanyName, command.Tagline, color, email, now);
+            repository.Add(settings);
+        }
+        else
+        {
+            settings.Update(command.CompanyName, command.Tagline, color, email, now);
+        }
+
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+        return Result.Success(settings.ToDto());
+    }
+}

@@ -2,6 +2,7 @@
 
   <PropertyGroup>
     <RootNamespace>Atlas.Web</RootNamespace>
+    <UserSecretsId>atlas-web-7d3c2b1e-4f5a-4e8b-9c0d-1a2b3c4d5e6f</UserSecretsId>
     <BlazorDisableThrowNavigationException>true</BlazorDisableThrowNavigationException>
   </PropertyGroup>
 
@@ -12,6 +13,7 @@
 
   <ItemGroup>
     <PackageReference Include="MudBlazor" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" PrivateAssets="all" />
   </ItemGroup>
 
 </Project>
