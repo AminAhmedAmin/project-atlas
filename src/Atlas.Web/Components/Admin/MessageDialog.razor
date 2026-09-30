@@ -1,0 +1,36 @@
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Message.Subject ?? "Message")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <div class="d-flex flex-wrap gap-x-6 gap-y-1 mb-4">
+            <MudText Typo="Typo.body2"><strong>From:</strong> @Message.Name &lt;<a href="mailto:@Message.Email">@Message.Email</a>&gt;</MudText>
+            <MudText Typo="Typo.body2" Class="text-secondary">@Message.ReceivedAtUtc.ToLocalTime().ToString("f", System.Globalization.CultureInfo.CurrentCulture)</MudText>
+        </div>
+        <MudPaper Outlined="true" Elevation="0" Class="pa-4 message-body">@Message.Message</MudPaper>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Error" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.Delete" OnClick="@(() => Close(MessageAction.Delete))">Delete</MudButton>
+        <MudSpacer />
+        <MudButton Variant="Variant.Text" OnClick="@(() => Close(MessageAction.MarkUnread))">Mark as unread</MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" StartIcon="@Icons.Material.Outlined.Reply"
+                   Href="@ReplyHref">Reply</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter, EditorRequired] public ContactMessageDto Message { get; set; } = default!;
+
+    private string ReplyHref =>
+        $"mailto:{Message.Email}?subject={Uri.EscapeDataString("Re: " + (Message.Subject ?? "your message"))}";
+
+    private void Close(MessageAction action) => Dialog.Close(DialogResult.Ok(action));
+
+    public enum MessageAction
+    {
+        MarkUnread,
+        Delete,
+    }
+}

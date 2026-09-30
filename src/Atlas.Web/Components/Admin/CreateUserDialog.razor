@@ -1,0 +1,52 @@
+@inject UseCases UseCases
+
+<MudDialog>
+    <TitleContent><MudText Typo="Typo.h6">Add user</MudText></TitleContent>
+    <DialogContent>
+        <MudTextField @bind-Value="_email" Label="E-mail" Variant="Variant.Outlined" InputType="InputType.Email" Class="mb-3"
+                      Error="_errors.Has(EmailField)" ErrorText="@_errors.For(EmailField)" />
+        <MudTextField @bind-Value="_password" Label="Temporary password" Variant="Variant.Outlined" InputType="InputType.Password" Class="mb-3"
+                      HelperText="At least 12 characters with upper- and lower-case letters and a digit."
+                      Error="_errors.Has(PasswordField)" ErrorText="@_errors.For(PasswordField)" />
+        <MudCheckBox T="bool" @bind-Value="_isAdmin" Color="Color.Primary" Label="Grant Admin role" />
+        @if (_errors.General is not null)
+        {
+            <MudAlert Severity="Severity.Error" Dense="true" Class="mt-2">@_errors.General</MudAlert>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" DropShadow="false" Disabled="_saving" OnClick="CreateAsync">Create</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private const string EmailField = nameof(CreateUserCommand.Email);
+    private const string PasswordField = nameof(CreateUserCommand.Password);
+
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private bool _isAdmin = true;
+    private bool _saving;
+    private readonly FieldErrors _errors = new();
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    private async Task CreateAsync()
+    {
+        _saving = true;
+        try
+        {
+            var result = await UseCases.SendAsync<CreateUserCommand, string>(new(_email, _password, _isAdmin));
+            _errors.Set(result);
+            if (result.IsSuccess)
+            {
+                Dialog.Close(DialogResult.Ok(result.Value));
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+}

@@ -1,0 +1,7 @@
+@using System.Security.Claims
+@using Atlas.Application.Dashboard
+@using Atlas.Application.Security
+@using Atlas.Application.Users
+@using Atlas.Web.Components.Admin.Shared
+@layout AdminLayout
+@attribute [Authorize(Roles = AppRoles.Admin)]

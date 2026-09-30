@@ -1,0 +1,169 @@
+@page "/admin/messages"
+@inject UseCases UseCases
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Messages | Admin</PageTitle>
+
+<AdminPageHeader Title="Messages" Description="Messages sent through the contact form." />
+
+<MudPaper Outlined="true" Elevation="0">
+    <div class="d-flex flex-wrap align-center gap-4 pa-4">
+        <MudTextField T="string" Value="_search" ValueChanged="OnSearchChanged" Placeholder="Search name, e-mail, subject or message"
+                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" DebounceInterval="400"
+                      Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Class="flex-grow-1" Style="min-width:240px" />
+        <MudSwitch T="bool" Value="_unreadOnly" ValueChanged="OnUnreadOnlyChanged" Color="Color.Primary" Label="Unread only" />
+    </div>
+    <MudTable @ref="_table" T="ContactMessageDto" ServerData="LoadAsync" Hover="true" Dense="true" Elevation="0"
+              OnRowClick="@((TableRowClickEventArgs<ContactMessageDto> e) => e.Item is null ? Task.CompletedTask : OpenAsync(e.Item))" RowClass="cursor-pointer"
+              RowClassFunc="@((m, _) => m.IsRead ? string.Empty : "message-unread")">
+        <HeaderContent>
+            <MudTh Style="width:32px"></MudTh>
+            <MudTh>From</MudTh>
+            <MudTh>Message</MudTh>
+            <MudTh Style="width:150px">Received</MudTh>
+            <MudTh Style="width:110px"></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd>
+                @if (!context.IsRead)
+                {
+                    <span class="unread-dot" title="Unread"></span>
+                }
+            </MudTd>
+            <MudTd DataLabel="From">
+                <div class="message-from">@context.Name</div>
+                <MudText Typo="Typo.caption" Class="text-secondary">@context.Email</MudText>
+            </MudTd>
+            <MudTd DataLabel="Message">
+                @if (context.Subject is not null)
+                {
+                    <div class="message-from">@context.Subject</div>
+                }
+                <MudText Typo="Typo.caption" Class="text-secondary message-preview">@context.Message</MudText>
+            </MudTd>
+            <MudTd DataLabel="Received">
+                <MudText Typo="Typo.body2">@context.ReceivedAtUtc.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture)</MudText>
+            </MudTd>
+            <MudTd>
+                <div class="d-flex justify-end" @onclick:stopPropagation="true">
+                    <MudTooltip Text="@(context.IsRead ? "Mark as unread" : "Mark as read")">
+                        <MudIconButton Size="Size.Small" Icon="@(context.IsRead ? Icons.Material.Outlined.MarkEmailUnread : Icons.Material.Outlined.MarkEmailRead)"
+                                       OnClick="() => SetReadAsync(context, !context.IsRead)" aria-label="Toggle read" />
+                    </MudTooltip>
+                    <MudTooltip Text="Delete">
+                        <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Outlined.Delete"
+                                       OnClick="() => DeleteAsync(context)" aria-label="Delete" />
+                    </MudTooltip>
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Class="pa-6 text-secondary">No messages found.</MudText>
+        </NoRecordsContent>
+        <PagerContent>
+            <MudTablePager PageSizeOptions="new[] { 10, 20, 50 }" />
+        </PagerContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private MudTable<ContactMessageDto>? _table;
+    private string? _search;
+    private bool _unreadOnly;
+
+    [SupplyParameterFromQuery(Name = "unread")] public bool? UnreadQuery { get; set; }
+
+    [SupplyParameterFromQuery(Name = "open")] public Guid? OpenQuery { get; set; }
+
+    protected override void OnInitialized() => _unreadOnly = UnreadQuery == true;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && OpenQuery is { } id)
+        {
+            var page = await UseCases.QueryAsync<GetContactMessagesQuery, PagedResult<ContactMessageDto>>(new(PageSize: GetContactMessagesHandler.MaxPageSize));
+            if (page.Items.FirstOrDefault(m => m.Id == id) is { } message)
+            {
+                await OpenAsync(message);
+            }
+        }
+    }
+
+    private async Task<TableData<ContactMessageDto>> LoadAsync(TableState state, CancellationToken cancellationToken)
+    {
+        var result = await UseCases.QueryAsync<GetContactMessagesQuery, PagedResult<ContactMessageDto>>(
+            new(_search, _unreadOnly, state.Page + 1, state.PageSize), cancellationToken);
+        return new TableData<ContactMessageDto> { Items = result.Items, TotalItems = result.TotalCount };
+    }
+
+    private Task ReloadAsync() => _table?.ReloadServerData() ?? Task.CompletedTask;
+
+    private async Task OnSearchChanged(string? value)
+    {
+        _search = value;
+        await ReloadAsync();
+    }
+
+    private async Task OnUnreadOnlyChanged(bool value)
+    {
+        _unreadOnly = value;
+        await ReloadAsync();
+    }
+
+    private async Task OpenAsync(ContactMessageDto message)
+    {
+        if (!message.IsRead)
+        {
+            await UseCases.SendAsync(new SetContactMessageReadCommand(message.Id, true));
+        }
+
+        var parameters = new DialogParameters<MessageDialog> { { d => d.Message, message } };
+        var dialog = await Dialogs.ShowAsync<MessageDialog>(null, parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true });
+        var result = await dialog.Result;
+
+        if (result is { Canceled: false, Data: MessageDialog.MessageAction action })
+        {
+            switch (action)
+            {
+                case MessageDialog.MessageAction.MarkUnread:
+                    await SetReadAsync(message, false);
+                    return;
+                case MessageDialog.MessageAction.Delete:
+                    await DeleteAsync(message);
+                    return;
+            }
+        }
+
+        await ReloadAsync();
+    }
+
+    private async Task SetReadAsync(ContactMessageDto message, bool isRead)
+    {
+        var result = await UseCases.SendAsync(new SetContactMessageReadCommand(message.Id, isRead));
+        if (result.IsFailure)
+        {
+            Snackbar.Add(result.ErrorMessage, Severity.Error);
+        }
+
+        await ReloadAsync();
+    }
+
+    private async Task DeleteAsync(ContactMessageDto message)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync(
+            "Delete message",
+            $"Delete the message from {message.Name}? This cannot be undone.",
+            yesText: "Delete",
+            cancelText: "Cancel");
+
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        var result = await UseCases.SendAsync(new DeleteContactMessageCommand(message.Id));
+        Snackbar.Add(result.IsSuccess ? "Message deleted." : result.ErrorMessage, result.IsSuccess ? Severity.Success : Severity.Error);
+        await ReloadAsync();
+    }
+}

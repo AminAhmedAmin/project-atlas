@@ -2,8 +2,11 @@
     <Found Context="routeData">
         <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.PublicLayout)">
             <NotAuthorized>
-                <RedirectToLogin />
+                <RedirectToLogin IsAuthenticated="@(context.User.Identity?.IsAuthenticated == true)" />
             </NotAuthorized>
+            <Authorizing>
+                <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+            </Authorizing>
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>

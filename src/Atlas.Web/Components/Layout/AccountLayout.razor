@@ -1,0 +1,22 @@
+@inherits LayoutComponentBase
+@inject BrandingService Branding
+
+@* Rendered statically (see App.razor): account pages need direct access to the HTTP response for cookies.
+   Interactive MudBlazor components are not used here; the brand color is applied through a CSS variable. *@
+<div class="account-shell" style="--mud-palette-primary:@(_settings?.PrimaryColor ?? "#1e63e9")">
+    <div class="account-card">
+        @if (_settings is not null)
+        {
+            <div class="mb-6">
+                <BrandLogo Settings="_settings" />
+            </div>
+        }
+        @Body
+    </div>
+</div>
+
+@code {
+    private SiteSettingsDto? _settings;
+
+    protected override async Task OnInitializedAsync() => _settings = await Branding.GetAsync();
+}

@@ -1,0 +1,108 @@
+@page "/admin"
+@inject UseCases UseCases
+@inject BrandingService Branding
+
+<PageTitle>Overview | Admin</PageTitle>
+
+<AdminPageHeader Title="Overview" Description="Activity on your website at a glance." />
+
+@if (_stats is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <div class="kpi-grid">
+        <KpiCard Label="New messages" Value="_stats.UnreadMessages" Icon="@Icons.Material.Outlined.MarkEmailUnread" Href="/admin/messages?unread=true" LinkText="Open inbox" />
+        <KpiCard Label="Total messages" Value="_stats.TotalMessages" Icon="@Icons.Material.Outlined.Inbox" Href="/admin/messages" LinkText="All messages" />
+        <KpiCard Label="Services" Value="_stats.ServicesCount" Icon="@Icons.Material.Outlined.Widgets" Href="/admin/services" LinkText="Manage services" />
+    </div>
+
+    <MudGrid Spacing="4" Class="mt-2">
+        <MudItem xs="12" lg="8">
+            <MudPaper Outlined="true" Elevation="0" Class="pa-5 h-100">
+                <div class="d-flex align-center justify-space-between mb-2">
+                    <div>
+                        <MudText Typo="Typo.h6" HtmlTag="h2">Messages, last 30 days</MudText>
+                        <MudText Typo="Typo.body2" Class="text-secondary">@_last30Total received</MudText>
+                    </div>
+                </div>
+                <MudChart T="double" ChartType="ChartType.Bar" ChartSeries="_series" ChartLabels="_labels"
+                          ChartOptions="_chartOptions" Width="100%" Height="280px" />
+            </MudPaper>
+        </MudItem>
+        <MudItem xs="12" lg="4">
+            <MudPaper Outlined="true" Elevation="0" Class="pa-5 h-100">
+                <div class="d-flex align-center justify-space-between mb-3">
+                    <MudText Typo="Typo.h6" HtmlTag="h2">Latest messages</MudText>
+                    <MudLink Href="/admin/messages" Typo="Typo.body2">View all</MudLink>
+                </div>
+                @if (_recent.Count == 0)
+                {
+                    <MudText Typo="Typo.body2" Class="text-secondary">No messages yet.</MudText>
+                }
+                else
+                {
+                    <MudList T="string" Dense="true" Class="pa-0">
+                        @foreach (var message in _recent)
+                        {
+                            <MudListItem T="string" Href="@($"/admin/messages?open={message.Id}")" Class="px-0">
+                                <div class="d-flex align-center gap-2">
+                                    @if (!message.IsRead)
+                                    {
+                                        <span class="unread-dot" aria-label="Unread"></span>
+                                    }
+                                    <div class="overflow-hidden">
+                                        <MudText Typo="Typo.body2" Class="@(message.IsRead ? "" : "font-weight-bold")">@message.Name</MudText>
+                                        <MudText Typo="Typo.caption" Class="text-secondary text-truncate d-block">
+                                            @(message.Subject ?? Preview(message.Message))
+                                        </MudText>
+                                    </div>
+                                    <MudSpacer />
+                                    <MudText Typo="Typo.caption" Class="text-secondary text-nowrap">@message.ReceivedAtUtc.ToLocalTime().ToString("MMM d", System.Globalization.CultureInfo.CurrentCulture)</MudText>
+                                </div>
+                            </MudListItem>
+                        }
+                    </MudList>
+                }
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private DashboardStatsDto? _stats;
+    private IReadOnlyList<ContactMessageDto> _recent = [];
+    private List<ChartSeries<double>> _series = [];
+    private string[] _labels = [];
+    private int _last30Total;
+    private BarChartOptions _chartOptions = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _stats = await UseCases.QueryAsync<GetDashboardStatsQuery, DashboardStatsDto>(new(Days: 30));
+        _recent = (await UseCases.QueryAsync<GetContactMessagesQuery, PagedResult<ContactMessageDto>>(new(PageSize: 6))).Items;
+
+        var days = _stats.MessagesPerDay;
+        _last30Total = days.Sum(d => d.Count);
+        _series = [new ChartSeries<double> { Name = "Messages", Data = new ChartData<double>(days.Select(d => (double)d.Count).ToList()) }];
+
+        // Label every fifth day (and today) to keep the axis readable.
+        _labels = days
+            .Select((d, i) => i % 5 == 0 || i == days.Count - 1 ? d.Date.ToString("MMM d", System.Globalization.CultureInfo.CurrentCulture) : string.Empty)
+            .ToArray();
+
+        var max = days.Count == 0 ? 0 : days.Max(d => d.Count);
+        var branding = await Branding.GetAsync();
+        _chartOptions = new BarChartOptions
+        {
+            ChartPalette = [branding.PrimaryColor],
+            ShowLegend = false,
+            YAxisTicks = max <= 5 ? 1 : (int)Math.Ceiling(max / 5.0),
+            YAxisFormat = "0",
+            YAxisSuggestedMax = Math.Max(4, max),
+        };
+    }
+
+    private static string Preview(string text) => text.Length <= 60 ? text : text[..60] + "…";
+}

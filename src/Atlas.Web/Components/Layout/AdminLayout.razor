@@ -1,0 +1,145 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject BrandingService Branding
+@inject UseCases UseCases
+@inject NavigationManager Navigation
+@inject IJSRuntime JS
+
+<MudThemeProvider @ref="_themeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+<MudLayout Class="admin-layout">
+    <MudAppBar Elevation="0" Class="admin-appbar" Dense="true">
+        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start"
+                       aria-label="Toggle navigation" OnClick="() => _drawerOpen = !_drawerOpen" />
+        @if (_settings is not null)
+        {
+            <BrandLogo Settings="_settings" Height="28" />
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Class="ml-3 d-none d-sm-flex">Admin</MudChip>
+        }
+        <MudSpacer />
+        <MudTooltip Text="View website">
+            <MudIconButton Icon="@Icons.Material.Outlined.OpenInNew" Color="Color.Inherit" Href="/" Target="_blank" aria-label="View website" />
+        </MudTooltip>
+        <MudTooltip Text="@(_isDarkMode ? "Switch to light mode" : "Switch to dark mode")">
+            <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Outlined.LightMode : Icons.Material.Outlined.DarkMode)"
+                           Color="Color.Inherit" OnClick="ToggleDarkModeAsync" aria-label="Toggle dark mode" />
+        </MudTooltip>
+        <AuthorizeView>
+            <MudMenu Icon="@Icons.Material.Outlined.AccountCircle" Color="Color.Inherit" AnchorOrigin="Origin.BottomRight"
+                     TransformOrigin="Origin.TopRight" aria-label="Account">
+                <MudText Typo="Typo.body2" Class="px-4 py-2 text-secondary">@context.User.Identity?.Name</MudText>
+                <MudDivider />
+                <form action="/account/logout" method="post" class="px-2 py-1">
+                    <AntiforgeryToken />
+                    <input type="hidden" name="returnUrl" value="/account/login" />
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Text" FullWidth="true"
+                               StartIcon="@Icons.Material.Outlined.Logout">Sign out</MudButton>
+                </form>
+            </MudMenu>
+        </AuthorizeView>
+    </MudAppBar>
+
+    <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Variant="@DrawerVariant.Responsive"
+               Breakpoint="Breakpoint.Md" Elevation="0" Class="admin-drawer">
+        <MudNavMenu Class="mt-2" Color="Color.Primary" Bordered="true">
+            <MudNavLink Href="/admin" Match="NavLinkMatch.All" Icon="@Icons.Material.Outlined.SpaceDashboard">Overview</MudNavLink>
+            <MudNavLink Href="/admin/messages" Icon="@Icons.Material.Outlined.Inbox">
+                <div class="d-flex align-center justify-space-between">
+                    <span>Messages</span>
+                    @if (_unread > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ma-0">@_unread</MudChip>
+                    }
+                </div>
+            </MudNavLink>
+            <MudText Typo="Typo.overline" Class="px-4 mt-4 text-secondary">Content</MudText>
+            <MudNavLink Href="/admin/content" Icon="@Icons.Material.Outlined.Article">Pages</MudNavLink>
+            <MudNavLink Href="/admin/services" Icon="@Icons.Material.Outlined.Widgets">Services</MudNavLink>
+            <MudText Typo="Typo.overline" Class="px-4 mt-4 text-secondary">System</MudText>
+            <MudNavLink Href="/admin/settings" Icon="@Icons.Material.Outlined.Tune">Settings</MudNavLink>
+            <MudNavLink Href="/admin/users" Icon="@Icons.Material.Outlined.People">Users</MudNavLink>
+        </MudNavMenu>
+    </MudDrawer>
+
+    <MudMainContent Class="admin-main">
+        <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="py-6">
+            @Body
+        </MudContainer>
+    </MudMainContent>
+</MudLayout>
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private const string DarkModeKey = "atlas-admin-dark";
+
+    private MudThemeProvider? _themeProvider;
+    private MudTheme _theme = new();
+    private SiteSettingsDto? _settings;
+    private bool _isDarkMode;
+    private bool _drawerOpen = true;
+    private int _unread;
+
+    protected override async Task OnInitializedAsync()
+    {
+        ApplyBranding(await Branding.GetAsync());
+        Branding.Changed += OnBrandingChanged;
+        Navigation.LocationChanged += OnLocationChanged;
+        await RefreshUnreadAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _themeProvider is null)
+        {
+            return;
+        }
+
+        var stored = await JS.InvokeAsync<string?>("localStorage.getItem", DarkModeKey);
+        _isDarkMode = stored is null ? await _themeProvider.GetSystemDarkModeAsync() : stored == "true";
+        StateHasChanged();
+    }
+
+    private async Task ToggleDarkModeAsync()
+    {
+        _isDarkMode = !_isDarkMode;
+        await JS.InvokeVoidAsync("localStorage.setItem", DarkModeKey, _isDarkMode ? "true" : "false");
+    }
+
+    private async Task RefreshUnreadAsync()
+    {
+        var stats = await UseCases.QueryAsync<GetDashboardStatsQuery, DashboardStatsDto>(new(Days: 1));
+        _unread = stats.UnreadMessages;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(async () =>
+    {
+        await RefreshUnreadAsync();
+        StateHasChanged();
+    });
+
+    private void OnBrandingChanged(SiteSettingsDto settings) => _ = InvokeAsync(() =>
+    {
+        ApplyBranding(settings);
+        StateHasChanged();
+    });
+
+    private void ApplyBranding(SiteSettingsDto settings)
+    {
+        _settings = settings;
+        _theme = ThemeFactory.Create(settings.PrimaryColor);
+    }
+
+    public void Dispose()
+    {
+        Branding.Changed -= OnBrandingChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

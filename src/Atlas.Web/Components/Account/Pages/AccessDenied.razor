@@ -1,0 +1,14 @@
+@page "/account/access-denied"
+
+<PageTitle>Access denied</PageTitle>
+<HeadContent><meta name="robots" content="noindex" /></HeadContent>
+
+<h1 class="account-title">Access denied</h1>
+<p class="account-subtitle">Your account does not have permission to open the dashboard. Ask an administrator to grant you the Admin role.</p>
+
+<form action="/account/logout" method="post">
+    <AntiforgeryToken />
+    <button type="submit" class="account-button">Sign in with another account</button>
+</form>
+
+<a href="/" class="account-back">&larr; Back to website</a>
