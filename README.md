@@ -26,8 +26,12 @@ server), **MudBlazor**, **EF Core 10** (SQL Server) and **ASP.NET Core Identity*
 work" steps, testimonials, FAQ and call to action), Services, About and Contact.
 - All page text, the services list and SEO meta descriptions are editable from the dashboard.
   Editable text can use the `{company}` token, which is replaced with the configured company name.
-- The contact form validates input and stores messages in the database. A honeypot field and a
-  short cooldown stop simple spam, and the contact e-mail (if set) is notified.
+- The contact form asks for name, e-mail, optional phone, the service of interest, a budget range
+  (in SAR) and the message, and stores it in the database. "Ask about this service" links on the
+  Services page preselect the service. A honeypot field and a short cooldown stop simple spam, and
+  the contact e-mail (if set) is notified.
+- A floating **WhatsApp** button appears on every page once a WhatsApp number is set in
+  **/admin/settings** (Saudi numbers like `05x xxx xxxx` are converted to `9665…` automatically).
 - **English and Arabic.** English pages live at `/…` and Arabic pages at `/ar/…`, with a
   right-to-left layout, an Arabic font (IBM Plex Sans Arabic) and a language switch in the header.
   Each language has its own page text, services and home page sections, edited in the dashboard

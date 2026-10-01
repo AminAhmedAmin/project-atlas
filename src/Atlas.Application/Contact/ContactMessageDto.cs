@@ -1,3 +1,4 @@
+using Atlas.Domain.Common;
 using Atlas.Domain.Contact;
 
 namespace Atlas.Application.Contact;
@@ -10,7 +11,11 @@ public sealed record ContactMessageDto(
     string Message,
     DateTime ReceivedAtUtc,
     bool IsRead,
-    DateTime? ReadAtUtc);
+    DateTime? ReadAtUtc,
+    string? Phone = null,
+    string? Service = null,
+    string? Budget = null,
+    SiteLanguage Language = SiteLanguage.English);
 
 internal static class ContactMessageMapping
 {
@@ -22,5 +27,9 @@ internal static class ContactMessageMapping
         message.Message,
         message.ReceivedAtUtc,
         message.IsRead,
-        message.ReadAtUtc);
+        message.ReadAtUtc,
+        message.Phone,
+        message.Service,
+        message.Budget,
+        message.Language);
 }

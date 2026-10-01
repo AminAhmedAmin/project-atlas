@@ -135,3 +135,47 @@ public sealed class ContactMessageHandlerTests
         Assert.Equal(Common.ErrorType.NotFound, Assert.Single(missing.Errors).Type);
     }
 }
+
+public sealed class ContactDetailsHandlerTests
+{
+    private readonly InMemoryContactMessageRepository _messages = new();
+
+    private SubmitContactMessageHandler Handler() => new(
+        _messages,
+        new InMemorySiteSettingsRepository(),
+        new FakeUnitOfWork(),
+        new RecordingEmailSender(),
+        new SubmitContactMessageValidator(),
+        TestData.Clock(),
+        NullLogger<SubmitContactMessageHandler>.Instance);
+
+    [Fact]
+    public async Task Details_are_saved()
+    {
+        var result = await Handler().HandleAsync(
+            new SubmitContactMessageCommand("Sara", "sara@example.com", null, "Hi", "+966551234567", "Mobile apps", BudgetRanges.From50KTo150K, SiteLanguage.Arabic),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsSuccess);
+        var saved = Assert.Single(_messages.Messages);
+        Assert.Equal(BudgetRanges.From50KTo150K, saved.Budget);
+        Assert.Equal(SiteLanguage.Arabic, saved.Language);
+    }
+
+    [Fact]
+    public async Task Invalid_phone_and_unknown_budget_are_field_errors()
+    {
+        var result = await Handler().HandleAsync(
+            new SubmitContactMessageCommand("Sara", "sara@example.com", null, "Hi", "abc", null, "a-million"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(["Phone", "Budget"], result.Errors.Select(e => e.Field));
+        Assert.Empty(_messages.Messages);
+    }
+
+    [Fact]
+    public void Every_budget_has_a_label()
+    {
+        Assert.All(BudgetRanges.All, key => Assert.NotEqual(key, BudgetRanges.Label(key)));
+    }
+}

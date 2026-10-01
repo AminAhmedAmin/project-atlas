@@ -105,6 +105,8 @@ internal sealed class ContactMessageRepository(AtlasDbContext db) : IContactMess
             query = query.Where(m =>
                 m.Name.Contains(text)
                 || m.Email.Value.Contains(text)
+                || (m.Phone != null && m.Phone.Contains(text))
+                || (m.Service != null && m.Service.Contains(text))
                 || (m.Subject != null && m.Subject.Contains(text))
                 || m.Message.Contains(text));
         }

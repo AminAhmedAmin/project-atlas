@@ -44,6 +44,33 @@ public sealed class SettingsHandlerTests
     }
 
     [Fact]
+    public async Task Update_saves_arabic_name_and_normalized_whatsapp()
+    {
+        var handler = new UpdateSiteSettingsHandler(_settings, _unitOfWork, new UpdateSiteSettingsValidator(), TestData.Clock());
+
+        var result = await handler.HandleAsync(
+            new UpdateSiteSettingsCommand("Co", null, "#123456", null, "شركة", "شعار", "+966 55 123 4567"),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsSuccess);
+        Assert.Equal("966551234567", result.Value.WhatsAppNumber);
+        Assert.Equal("شركة", result.Value.CompanyNameFor(Domain.Common.SiteLanguage.Arabic));
+        Assert.Equal("Co", result.Value.CompanyNameFor(Domain.Common.SiteLanguage.English));
+    }
+
+    [Fact]
+    public async Task Update_rejects_invalid_whatsapp_number()
+    {
+        var handler = new UpdateSiteSettingsHandler(_settings, _unitOfWork, new UpdateSiteSettingsValidator(), TestData.Clock());
+
+        var result = await handler.HandleAsync(
+            new UpdateSiteSettingsCommand("Co", null, "#123456", null, WhatsAppNumber: "whatsapp"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("WhatsAppNumber", Assert.Single(result.Errors).Field);
+    }
+
+    [Fact]
     public async Task Update_rejects_invalid_values()
     {
         var handler = new UpdateSiteSettingsHandler(_settings, _unitOfWork, new UpdateSiteSettingsValidator(), TestData.Clock());

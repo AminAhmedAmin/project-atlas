@@ -47,6 +47,12 @@ else
                                           Error="_errors.Has(nameof(_model.ContactEmail))" ErrorText="@_errors.For(nameof(_model.ContactEmail))" />
                         </MudItem>
                         <MudItem xs="12">
+                            <MudTextField @bind-Value="_model.WhatsAppNumber" Label="WhatsApp number" Variant="Variant.Outlined" dir="ltr"
+                                          InputType="InputType.Telephone" Placeholder="+966 55 123 4567"
+                                          HelperText="Shows a WhatsApp button on every page. Leave empty to hide it."
+                                          Error="_errors.Has(nameof(_model.WhatsAppNumber))" ErrorText="@_errors.For(nameof(_model.WhatsAppNumber))" />
+                        </MudItem>
+                        <MudItem xs="12">
                             <MudText Typo="Typo.subtitle2" Class="mb-2">Primary color</MudText>
                             <div class="d-flex flex-wrap align-center gap-2 mb-3">
                                 @foreach (var swatch in Swatches)
@@ -130,6 +136,7 @@ else
             ContactEmail = _settings.ContactEmail,
             ArabicCompanyName = _settings.ArabicCompanyName,
             ArabicTagline = _settings.ArabicTagline,
+            WhatsAppNumber = _settings.WhatsAppNumber is { } wa ? "+" + wa : null,
         };
     }
 
@@ -144,7 +151,7 @@ else
         try
         {
             var result = await UseCases.SendAsync<UpdateSiteSettingsCommand, SiteSettingsDto>(
-                new(_model.CompanyName, _model.Tagline, _model.PrimaryColor, _model.ContactEmail, _model.ArabicCompanyName, _model.ArabicTagline));
+                new(_model.CompanyName, _model.Tagline, _model.PrimaryColor, _model.ContactEmail, _model.ArabicCompanyName, _model.ArabicTagline, _model.WhatsAppNumber));
 
             _errors.Set(result);
             if (result.IsSuccess)
@@ -224,5 +231,7 @@ else
         public string? ArabicCompanyName { get; set; }
 
         public string? ArabicTagline { get; set; }
+
+        public string? WhatsAppNumber { get; set; }
     }
 }

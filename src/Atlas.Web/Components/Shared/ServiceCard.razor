@@ -11,6 +11,10 @@
             <MudText Typo="Typo.body2" Class="mt-3">@paragraph</MudText>
         }
     }
+    @if (!string.IsNullOrWhiteSpace(AskHref))
+    {
+        <MudLink Href="@AskHref" Typo="Typo.body2" Class="mt-4 d-inline-block service-ask">@AskText</MudLink>
+    }
 </MudPaper>
 
 @code {
@@ -19,4 +23,9 @@
     [Parameter] public bool ShowDescription { get; set; }
 
     [Parameter] public string CompanyName { get; set; } = string.Empty;
+
+    /// <summary>Optional link to the contact form with this service preselected.</summary>
+    [Parameter] public string? AskHref { get; set; }
+
+    [Parameter] public string? AskText { get; set; }
 }

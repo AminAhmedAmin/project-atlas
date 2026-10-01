@@ -9,7 +9,7 @@
 
 <MudPaper Outlined="true" Elevation="0">
     <div class="d-flex flex-wrap align-center gap-4 pa-4">
-        <MudTextField T="string" Value="_search" ValueChanged="OnSearchChanged" Placeholder="Search name, e-mail, subject or message"
+        <MudTextField T="string" Value="_search" ValueChanged="OnSearchChanged" Placeholder="Search name, e-mail, phone, service or message"
                       Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" DebounceInterval="400"
                       Variant="Variant.Outlined" Margin="Margin.Dense" Clearable="true" Class="flex-grow-1" Style="min-width:240px" />
         <MudSwitch T="bool" Value="_unreadOnly" ValueChanged="OnUnreadOnlyChanged" Color="Color.Primary" Label="Unread only" />
@@ -40,7 +40,25 @@
                 {
                     <div class="message-from">@context.Subject</div>
                 }
-                <MudText Typo="Typo.caption" Class="text-secondary message-preview">@context.Message</MudText>
+                <MudText Typo="Typo.caption" Class="text-secondary message-preview" dir="auto">@context.Message</MudText>
+                <div class="d-flex flex-wrap gap-1 mt-1">
+                    @if (context.Service is not null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Color="Color.Primary" Class="ma-0">@context.Service</MudChip>
+                    }
+                    @if (context.Budget is not null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ma-0">@BudgetRanges.Label(context.Budget)</MudChip>
+                    }
+                    @if (context.Language == SiteLanguage.Arabic)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ma-0">عربي</MudChip>
+                    }
+                    @if (context.Phone is not null)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Icon="@Icons.Material.Outlined.Phone" Class="ma-0">@context.Phone</MudChip>
+                    }
+                </div>
             </MudTd>
             <MudTd DataLabel="Received">
                 <MudText Typo="Typo.body2">@context.ReceivedAtUtc.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture)</MudText>

@@ -31,7 +31,8 @@
                 <div class="card-grid">
                     @foreach (var service in Items)
                     {
-                        <ServiceCard Service="service" ShowDescription="true" CompanyName="@CompanyNameOf(Settings, Lang)" />
+                        <ServiceCard Service="service" ShowDescription="true" CompanyName="@CompanyNameOf(Settings, Lang)"
+                                     AskHref="@($"{Href("/contact")}?service={Uri.EscapeDataString(service.Title)}")" AskText="@L("Ask about this service")" />
                     }
                 </div>
             }

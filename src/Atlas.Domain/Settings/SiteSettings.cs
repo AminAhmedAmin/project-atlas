@@ -21,6 +21,9 @@ public sealed class SiteSettings : Entity
 
     public string? LogoUrl { get; private set; }
 
+    /// <summary>WhatsApp number in international digits (e.g. 9665XXXXXXXX), used for the WhatsApp button.</summary>
+    public string? WhatsAppNumber { get; private set; }
+
     /// <summary>Company name shown on the Arabic site. Falls back to <see cref="CompanyName"/>.</summary>
     public string? ArabicCompanyName { get; private set; }
 
@@ -71,6 +74,24 @@ public sealed class SiteSettings : Entity
     {
         ArabicCompanyName = Guard.Optional(arabicCompanyName, "Arabic company name", CompanyNameMaxLength);
         ArabicTagline = Guard.Optional(arabicTagline, "Arabic tagline", TaglineMaxLength);
+        UpdatedAtUtc = Guard.Utc(nowUtc, nameof(nowUtc));
+    }
+
+    public void SetWhatsApp(string? number, DateTime nowUtc)
+    {
+        if (string.IsNullOrWhiteSpace(number))
+        {
+            WhatsAppNumber = null;
+        }
+        else if (PhoneNumber.IsValid(number))
+        {
+            WhatsAppNumber = PhoneNumber.ToInternationalDigits(number);
+        }
+        else
+        {
+            throw new DomainException("WhatsApp number is not valid.");
+        }
+
         UpdatedAtUtc = Guard.Utc(nowUtc, nameof(nowUtc));
     }
 

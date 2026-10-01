@@ -11,7 +11,8 @@ public sealed record SiteSettingsDto(
     string? ContactEmail,
     DateTime? UpdatedAtUtc,
     string? ArabicCompanyName = null,
-    string? ArabicTagline = null)
+    string? ArabicTagline = null,
+    string? WhatsAppNumber = null)
 {
     /// <summary>Company name for the given language, falling back to the English name.</summary>
     public string CompanyNameFor(SiteLanguage language) =>
@@ -32,7 +33,8 @@ internal static class SiteSettingsMapping
         settings.ContactEmail?.Value,
         settings.UpdatedAtUtc,
         settings.ArabicCompanyName,
-        settings.ArabicTagline);
+        settings.ArabicTagline,
+        settings.WhatsAppNumber);
 
     public static SiteSettingsDto ToDto(this BrandingDefaults defaults) => new(
         defaults.CompanyName,

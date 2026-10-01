@@ -7,7 +7,28 @@
             <MudText Typo="Typo.body2"><strong>From:</strong> @Message.Name &lt;<a href="mailto:@Message.Email">@Message.Email</a>&gt;</MudText>
             <MudText Typo="Typo.body2" Class="text-secondary">@Message.ReceivedAtUtc.ToLocalTime().ToString("f", System.Globalization.CultureInfo.CurrentCulture)</MudText>
         </div>
-        <MudPaper Outlined="true" Elevation="0" Class="pa-4 message-body">@Message.Message</MudPaper>
+        @if (HasDetails)
+        {
+            <div class="message-details mb-4">
+                @if (Message.Phone is not null)
+                {
+                    <div><span class="text-secondary">Phone</span>
+                        <a href="tel:@Message.Phone" dir="ltr">@Message.Phone</a>
+                        · <a href="@WhatsAppHref" target="_blank" rel="noopener">WhatsApp</a>
+                    </div>
+                }
+                @if (Message.Service is not null)
+                {
+                    <div><span class="text-secondary">Service</span> @Message.Service</div>
+                }
+                @if (Message.Budget is not null)
+                {
+                    <div><span class="text-secondary">Budget</span> @BudgetRanges.Label(Message.Budget)</div>
+                }
+                <div><span class="text-secondary">Language</span> @Message.Language</div>
+            </div>
+        }
+        <MudPaper Outlined="true" Elevation="0" Class="pa-4 message-body" dir="auto">@Message.Message</MudPaper>
     </DialogContent>
     <DialogActions>
         <MudButton Color="Color.Error" Variant="Variant.Text" StartIcon="@Icons.Material.Outlined.Delete" OnClick="@(() => Close(MessageAction.Delete))">Delete</MudButton>
@@ -22,6 +43,10 @@
     [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
 
     [Parameter, EditorRequired] public ContactMessageDto Message { get; set; } = default!;
+
+    private bool HasDetails => Message.Phone is not null || Message.Service is not null || Message.Budget is not null || Message.Language != SiteLanguage.English;
+
+    private string WhatsAppHref => $"https://wa.me/{PhoneNumber.ToInternationalDigits(Message.Phone ?? string.Empty)}";
 
     private string ReplyHref =>
         $"mailto:{Message.Email}?subject={Uri.EscapeDataString("Re: " + (Message.Subject ?? "your message"))}";

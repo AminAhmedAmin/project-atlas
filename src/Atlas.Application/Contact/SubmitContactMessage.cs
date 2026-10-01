@@ -6,7 +6,15 @@ using Microsoft.Extensions.Logging;
 
 namespace Atlas.Application.Contact;
 
-public sealed record SubmitContactMessageCommand(string Name, string Email, string? Subject, string Message);
+public sealed record SubmitContactMessageCommand(
+    string Name,
+    string Email,
+    string? Subject,
+    string Message,
+    string? Phone = null,
+    string? Service = null,
+    string? Budget = null,
+    SiteLanguage Language = SiteLanguage.English);
 
 public sealed class SubmitContactMessageValidator : IValidator<SubmitContactMessageCommand>
 {
@@ -15,6 +23,10 @@ public sealed class SubmitContactMessageValidator : IValidator<SubmitContactMess
         .Email(instance.Email, nameof(instance.Email), "E-mail", required: true)
         .Optional(instance.Subject, nameof(instance.Subject), "Subject", ContactMessage.SubjectMaxLength)
         .Required(instance.Message, nameof(instance.Message), "Message", ContactMessage.MessageMaxLength)
+        .Must(string.IsNullOrWhiteSpace(instance.Phone) || PhoneNumber.IsValid(instance.Phone), nameof(instance.Phone), "Phone number is not valid.")
+        .Optional(instance.Service, nameof(instance.Service), "Service", ContactMessage.ServiceMaxLength)
+        .Must(string.IsNullOrWhiteSpace(instance.Budget) || BudgetRanges.All.Contains(instance.Budget), nameof(instance.Budget), "Unknown budget range.")
+        .Must(Enum.IsDefined(instance.Language), nameof(instance.Language), "Unknown language.")
         .Errors;
 }
 
@@ -43,7 +55,8 @@ public sealed partial class SubmitContactMessageHandler(
                 EmailAddress.Create(command.Email),
                 command.Subject,
                 command.Message,
-                timeProvider.UtcNow());
+                timeProvider.UtcNow(),
+                new ContactDetails(command.Phone, command.Service, command.Budget, command.Language));
         }
         catch (DomainException ex)
         {
@@ -70,7 +83,16 @@ public sealed partial class SubmitContactMessageHandler(
             }
 
             var subject = $"New contact message: {message.Subject ?? message.Name}";
-            var body = $"From: {message.Name} <{message.Email}>\n\n{message.Message}";
+            var body = string.Join('\n', new[]
+            {
+                $"From: {message.Name} <{message.Email}>",
+                message.Phone is null ? null : $"Phone: {message.Phone}",
+                message.Service is null ? null : $"Service: {message.Service}",
+                message.Budget is null ? null : $"Budget: {BudgetRanges.Label(message.Budget)}",
+                $"Language: {message.Language}",
+                string.Empty,
+                message.Message,
+            }.Where(line => line is not null));
             await emailSender.SendAsync(new EmailMessage(to.Value, subject, body, message.Email.Value), cancellationToken);
         }
 #pragma warning disable CA1031 // Notification failures are logged and swallowed by design.

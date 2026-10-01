@@ -16,6 +16,10 @@ internal sealed class ContactMessageConfiguration : IEntityTypeConfiguration<Con
         builder.Property(m => m.Name).HasMaxLength(ContactMessage.NameMaxLength).IsRequired();
         builder.Property(m => m.Subject).HasMaxLength(ContactMessage.SubjectMaxLength);
         builder.Property(m => m.Message).HasMaxLength(ContactMessage.MessageMaxLength).IsRequired();
+        builder.Property(m => m.Phone).HasMaxLength(PhoneNumber.MaxLength);
+        builder.Property(m => m.Service).HasMaxLength(ContactMessage.ServiceMaxLength);
+        builder.Property(m => m.Budget).HasMaxLength(ContactMessage.BudgetMaxLength).IsUnicode(false);
+        builder.Property(m => m.Language).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
 
         // A complex property (rather than a value converter) keeps Email.Value queryable for search.
         builder.ComplexProperty(m => m.Email, email =>

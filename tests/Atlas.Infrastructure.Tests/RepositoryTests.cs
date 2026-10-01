@@ -20,7 +20,7 @@ public sealed class RepositoryTests
         {
             var submit = scope.ServiceProvider.GetRequiredService<ICommandHandler<SubmitContactMessageCommand, Guid>>();
             janeId = (await submit.HandleAsync(new SubmitContactMessageCommand("Jane", "jane@example.com", "Pricing", "How much?"), ct)).Value;
-            Assert.True((await submit.HandleAsync(new SubmitContactMessageCommand("Bob", "bob@example.org", null, "Hello"), ct)).IsSuccess);
+            Assert.True((await submit.HandleAsync(new SubmitContactMessageCommand("Bob", "bob@example.org", null, "Hello", "0551234567", "Mobile apps"), ct)).IsSuccess);
         }
 
         await using (var scope = host.Services.CreateAsyncScope())
@@ -35,6 +35,9 @@ public sealed class RepositoryTests
 
             var byEmail = await search.HandleAsync(new GetContactMessagesQuery("example.org"), ct);
             Assert.Equal("Bob", Assert.Single(byEmail.Items).Name);
+
+            var byPhone = await search.HandleAsync(new GetContactMessagesQuery("055123"), ct);
+            Assert.Equal("Mobile apps", Assert.Single(byPhone.Items).Service);
 
             var unread = await search.HandleAsync(new GetContactMessagesQuery(UnreadOnly: true), ct);
             Assert.Equal("Bob", Assert.Single(unread.Items).Name);

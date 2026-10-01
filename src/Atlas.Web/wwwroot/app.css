@@ -4,6 +4,13 @@ html, body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* MudBlazor parks closed popovers at left:-9999px. In right-to-left pages that off-screen space
+   becomes scrollable and the page grows sideways, so horizontal overflow is clipped. */
+html,
+body {
+    overflow-x: clip;
+}
+
 h1:focus {
     outline: none;
 }
@@ -799,4 +806,50 @@ a {
 .language-switch {
     display: inline-flex;
     gap: 0.25rem;
+}
+
+/* ---------- Floating buttons ---------- */
+.whatsapp-fab {
+    position: fixed;
+    inset-inline-end: 24px;
+    bottom: 24px;
+    z-index: 1200;
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    border-radius: 50%;
+    background: #25d366;
+    color: #fff;
+    box-shadow: 0 10px 24px -8px rgba(0, 0, 0, 0.35);
+    transition: transform 0.15s ease;
+}
+
+.whatsapp-fab:hover {
+    transform: scale(1.06);
+    color: #fff;
+}
+
+.service-ask {
+    font-weight: 600;
+}
+
+.message-details {
+    display: grid;
+    gap: 0.35rem;
+    font-size: 0.9rem;
+}
+
+.message-details .text-secondary {
+    display: inline-block;
+    min-width: 80px;
+}
+
+/* Phone numbers and e-mail addresses are typed left-to-right, even on the Arabic site. */
+.ltr-input input {
+    direction: ltr;
+}
+
+[dir="rtl"] .ltr-input input {
+    text-align: right;
 }

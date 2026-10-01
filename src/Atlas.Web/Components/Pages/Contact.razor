@@ -36,8 +36,31 @@
                                     </MudItem>
                                     <MudItem xs="12" sm="6">
                                         <MudTextField @bind-Value="_model.Email" Label="@L("E-mail")" Variant="Variant.Outlined"
-                                                      InputType="InputType.Email" autocomplete="email" dir="ltr"
+                                                      InputType="InputType.Email" autocomplete="email" Class="ltr-input"
                                                       Error="@_errors.ContainsKey(EmailField)" ErrorText="@_errors.GetValueOrDefault(EmailField)" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudTextField @bind-Value="_model.Phone" Label="@L("Phone (optional)")" Variant="Variant.Outlined"
+                                                      InputType="InputType.Telephone" autocomplete="tel" Class="ltr-input"
+                                                      MaxLength="PhoneNumber.MaxLength"
+                                                      Error="@_errors.ContainsKey(PhoneField)" ErrorText="@_errors.GetValueOrDefault(PhoneField)" />
+                                    </MudItem>
+                                    <MudItem xs="12" sm="6">
+                                        <MudSelect T="string" @bind-Value="_model.Service" Label="@L("Service you're interested in")" Variant="Variant.Outlined" Clearable="true">
+                                            @foreach (var service in ServiceOptions)
+                                            {
+                                                <MudSelectItem T="string" Value="service">@service</MudSelectItem>
+                                            }
+                                        </MudSelect>
+                                    </MudItem>
+                                    <MudItem xs="12">
+                                        <MudText Typo="Typo.body2" Class="mb-2 text-secondary">@L("Budget (optional)")</MudText>
+                                        <MudChipSet T="string" @bind-SelectedValue="_model.Budget" SelectionMode="SelectionMode.ToggleSelection" CheckMark="true" Variant="Variant.Outlined" Color="Color.Primary">
+                                            @foreach (var budget in BudgetRanges.All)
+                                            {
+                                                <MudChip T="string" Value="budget">@BudgetLabel(budget)</MudChip>
+                                            }
+                                        </MudChipSet>
                                     </MudItem>
                                     <MudItem xs="12">
                                         <MudTextField @bind-Value="_model.Subject" Label="@L("Subject (optional)")" Variant="Variant.Outlined"
@@ -80,6 +103,16 @@
                                 <MudText Typo="Typo.body1" Class="mb-4">@paragraph</MudText>
                             }
                         }
+                        @if (!string.IsNullOrWhiteSpace(Settings.WhatsAppNumber))
+                        {
+                            <div class="d-flex align-center gap-3 mt-4">
+                                <MudIcon Icon="@Icons.Custom.Brands.WhatsApp" Style="color:#25d366" />
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">@L("Prefer WhatsApp?")</MudText>
+                                    <a href="@($"https://wa.me/{Settings.WhatsAppNumber}?text={Uri.EscapeDataString(L("Hello! I'd like to ask about your services."))}")" target="_blank" rel="noopener">@L("Message us on WhatsApp")</a>
+                                </div>
+                            </div>
+                        }
                         @if (!string.IsNullOrWhiteSpace(Settings.ContactEmail))
                         {
                             <div class="d-flex align-center gap-3 mt-4">
@@ -106,6 +139,7 @@
     private const string EmailField = nameof(SubmitContactMessageCommand.Email);
     private const string SubjectField = nameof(SubmitContactMessageCommand.Subject);
     private const string MessageField = nameof(SubmitContactMessageCommand.Message);
+    private const string PhoneField = nameof(SubmitContactMessageCommand.Phone);
     private static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(20);
 
     private ContactFormModel _model = new();
@@ -119,11 +153,28 @@
 
     [PersistentState] public PageContentDto? Page { get; set; }
 
+    [PersistentState] public List<string>? ServiceTitles { get; set; }
+
+    /// <summary>Preselects a service, e.g. from "Ask about this service" links.</summary>
+    [SupplyParameterFromQuery(Name = "service")] public string? ServiceQuery { get; set; }
+
+    private IEnumerable<string> ServiceOptions => (ServiceTitles ?? []).Append(L("Other"));
+
     protected override async Task OnInitializedAsync()
     {
         Settings ??= await Branding.GetAsync();
         Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact, Lang));
+        ServiceTitles ??= (await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: true, Lang)))
+            .Select(s => s.Title)
+            .ToList();
+
+        if (_model.Service is null && ServiceQuery is { } requested && ServiceOptions.Contains(requested))
+        {
+            _model.Service = requested;
+        }
     }
+
+    private string BudgetLabel(string key) => L(BudgetRanges.Label(key));
 
     private async Task SubmitAsync()
     {
@@ -150,7 +201,9 @@
         try
         {
             var result = await UseCases.SendAsync<SubmitContactMessageCommand, Guid>(
-                new SubmitContactMessageCommand(_model.Name, _model.Email, _model.Subject, _model.Message));
+                new SubmitContactMessageCommand(
+                    _model.Name, _model.Email, _model.Subject, _model.Message,
+                    _model.Phone, _model.Service, _model.Budget, Lang));
 
             if (result.IsSuccess)
             {
@@ -186,6 +239,11 @@
             errors[EmailField] = MessageFor(EmailField);
         }
 
+        if (!string.IsNullOrWhiteSpace(model.Phone) && !PhoneNumber.IsValid(model.Phone))
+        {
+            errors[PhoneField] = L("Please enter a valid phone number.");
+        }
+
         if (model.Subject?.Trim().Length > ContactMessageEntity.SubjectMaxLength)
         {
             errors[SubjectField] = L("This text is too long.");
@@ -204,6 +262,7 @@
         NameField => L("Please enter your name."),
         EmailField => string.IsNullOrWhiteSpace(_model.Email) ? L("Please enter your e-mail address.") : L("Please enter a valid e-mail address."),
         MessageField => L("Please enter a message."),
+        PhoneField => L("Please enter a valid phone number."),
         _ => L("This text is too long."),
     };
 
@@ -223,6 +282,12 @@
         public string Email { get; set; } = string.Empty;
 
         public string? Subject { get; set; }
+
+        public string? Phone { get; set; }
+
+        public string? Service { get; set; }
+
+        public string? Budget { get; set; }
 
         public string Message { get; set; } = string.Empty;
 

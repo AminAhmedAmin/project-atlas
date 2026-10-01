@@ -18,6 +18,7 @@ internal sealed class SiteSettingsConfiguration : IEntityTypeConfiguration<SiteS
         builder.Property(s => s.LogoUrl).HasMaxLength(SiteSettings.LogoUrlMaxLength);
         builder.Property(s => s.ArabicCompanyName).HasMaxLength(SiteSettings.CompanyNameMaxLength);
         builder.Property(s => s.ArabicTagline).HasMaxLength(SiteSettings.TaglineMaxLength);
+        builder.Property(s => s.WhatsAppNumber).HasMaxLength(20).IsUnicode(false);
 
         builder.Property(s => s.PrimaryColor)
             .HasConversion(c => c.Value, v => HexColor.Create(v))

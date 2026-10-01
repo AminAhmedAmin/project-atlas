@@ -11,7 +11,8 @@ public sealed record UpdateSiteSettingsCommand(
     string PrimaryColor,
     string? ContactEmail,
     string? ArabicCompanyName = null,
-    string? ArabicTagline = null);
+    string? ArabicTagline = null,
+    string? WhatsAppNumber = null);
 
 public sealed class UpdateSiteSettingsValidator : IValidator<UpdateSiteSettingsCommand>
 {
@@ -22,6 +23,7 @@ public sealed class UpdateSiteSettingsValidator : IValidator<UpdateSiteSettingsC
         .Optional(instance.ArabicTagline, nameof(instance.ArabicTagline), "Arabic tagline", SiteSettings.TaglineMaxLength)
         .Must(HexColor.TryCreate(instance.PrimaryColor, out _), nameof(instance.PrimaryColor), "Primary color must be in #RRGGBB format.")
         .Email(instance.ContactEmail, nameof(instance.ContactEmail), "Contact e-mail", required: false)
+        .Must(string.IsNullOrWhiteSpace(instance.WhatsAppNumber) || PhoneNumber.IsValid(instance.WhatsAppNumber), nameof(instance.WhatsAppNumber), "WhatsApp number is not valid. Use the international format, e.g. +966 55 123 4567.")
         .Errors;
 }
 
@@ -55,6 +57,7 @@ public sealed class UpdateSiteSettingsHandler(
         }
 
         settings.UpdateArabic(command.ArabicCompanyName, command.ArabicTagline, now);
+        settings.SetWhatsApp(command.WhatsAppNumber, now);
         await unitOfWork.SaveChangesAsync(cancellationToken);
         return Result.Success(settings.ToDto());
     }

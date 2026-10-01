@@ -63,6 +63,23 @@ public static class UiText
         ["Please wait a few seconds before sending another message."] = "يرجى الانتظار بضع ثوانٍ قبل إرسال رسالة أخرى.",
         ["Something went wrong. Please try again."] = "حدث خطأ ما. يرجى المحاولة مرة أخرى.",
         ["Prefer e-mail?"] = "تفضّل البريد الإلكتروني؟",
+        ["Phone (optional)"] = "رقم الجوال (اختياري)",
+        ["Service you're interested in"] = "الخدمة التي تهمك",
+        ["Budget (optional)"] = "الميزانية التقريبية (اختياري)",
+        ["Other"] = "أخرى",
+        ["Please enter a valid phone number."] = "يرجى إدخال رقم جوال صحيح.",
+        ["Under 50,000 SAR"] = "أقل من 50,000 ريال",
+        ["50,000 – 150,000 SAR"] = "50,000 – 150,000 ريال",
+        ["150,000 – 500,000 SAR"] = "150,000 – 500,000 ريال",
+        ["Over 500,000 SAR"] = "أكثر من 500,000 ريال",
+        ["Not sure yet"] = "لم أحدد بعد",
+        ["Ask about this service"] = "استفسر عن هذه الخدمة",
+
+        // WhatsApp
+        ["Chat on WhatsApp"] = "تواصل عبر واتساب",
+        ["Prefer WhatsApp?"] = "تفضّل واتساب؟",
+        ["Message us on WhatsApp"] = "راسلنا على واتساب",
+        ["Hello! I'd like to ask about your services."] = "مرحبًا! أود الاستفسار عن خدماتكم.",
         ["We usually reply within one business day."] = "نرد عادةً خلال يوم عمل واحد.",
 
         // Errors
