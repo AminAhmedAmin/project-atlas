@@ -2,45 +2,51 @@
 @inject BrandingService Branding
 @inject UseCases UseCases
 
-@if (Settings is not null && Page is not null && Services is not null)
+@if (Settings is not null && Page is not null && Services is not null && Blocks is not null)
 {
     <SeoHead CompanyName="@Settings.CompanyName" Tagline="@Settings.Tagline" Description="@Page.MetaDescription" />
 
     <section class="hero">
         <MudContainer MaxWidth="MaxWidth.Large">
-            <div class="hero-content">
-                <MudText Typo="Typo.h2" HtmlTag="h1" Class="hero-title">@Render(Page.Title)</MudText>
-                @if (!string.IsNullOrWhiteSpace(Page.Subtitle))
-                {
-                    <MudText Typo="Typo.h6" HtmlTag="p" Class="hero-subtitle">@Render(Page.Subtitle)</MudText>
-                }
-                <div class="hero-actions">
-                    @if (!string.IsNullOrWhiteSpace(Page.CallToActionText) && !string.IsNullOrWhiteSpace(Page.CallToActionUrl))
+            <div class="hero-grid">
+                <div class="hero-content">
+                    <MudText Typo="Typo.h2" HtmlTag="h1" Class="hero-title">@Render(Page.Title)</MudText>
+                    @if (!string.IsNullOrWhiteSpace(Page.Subtitle))
                     {
-                        <MudButton Href="@Page.CallToActionUrl" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
-                                   EndIcon="@Icons.Material.Filled.ArrowForward" DropShadow="false">
-                            @Page.CallToActionText
-                        </MudButton>
+                        <MudText Typo="Typo.h6" HtmlTag="p" Class="hero-subtitle">@Render(Page.Subtitle)</MudText>
                     }
-                    @if (Services.Count > 0)
-                    {
-                        <MudButton Href="/services" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large">
-                            Explore services
-                        </MudButton>
-                    }
+                    <div class="hero-actions">
+                        @if (!string.IsNullOrWhiteSpace(Page.CallToActionText) && !string.IsNullOrWhiteSpace(Page.CallToActionUrl))
+                        {
+                            <MudButton Href="@Page.CallToActionUrl" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                                       EndIcon="@Icons.Material.Filled.ArrowForward" DropShadow="false">
+                                @Page.CallToActionText
+                            </MudButton>
+                        }
+                        @if (Services.Count > 0)
+                        {
+                            <MudButton Href="/services" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large">
+                                Explore services
+                            </MudButton>
+                        }
+                    </div>
+                </div>
+                <div class="hero-visual" aria-hidden="true">
+                    <HeroIllustration />
                 </div>
             </div>
         </MudContainer>
     </section>
 
+    <StatsBand Items="@Of(BlockKind.Stat)" />
+
+    <ClientLogos Items="@Of(BlockKind.ClientLogo)" />
+
     @if (Services.Count > 0)
     {
         <section class="section">
             <MudContainer MaxWidth="MaxWidth.Large">
-                <div class="section-heading">
-                    <MudText Typo="Typo.overline" Color="Color.Primary">What we do</MudText>
-                    <MudText Typo="Typo.h4" HtmlTag="h2">Services</MudText>
-                </div>
+                <SectionHeading Eyebrow="What we do" Title="Services" />
                 <div class="card-grid">
                     @foreach (var service in Services.Take(6))
                     {
@@ -59,17 +65,11 @@
         </section>
     }
 
-    @if (!string.IsNullOrWhiteSpace(Page.Body))
-    {
-        <section class="section section-alt">
-            <MudContainer MaxWidth="MaxWidth.Medium" Class="text-center">
-                @foreach (var paragraph in ContentText.Paragraphs(Page.Body, Settings.CompanyName))
-                {
-                    <MudText Typo="Typo.h6" HtmlTag="p" Class="lead-text">@paragraph</MudText>
-                }
-            </MudContainer>
-        </section>
-    }
+    <ProcessSteps Items="@Of(BlockKind.ProcessStep)" Lead="@Render(Page.Body)" />
+
+    <Testimonials Items="@Of(BlockKind.Testimonial)" />
+
+    <FaqSection Items="@Of(BlockKind.Faq)" />
 
     @if (Contact is not null)
     {
@@ -97,13 +97,19 @@
 
     [PersistentState] public List<ServiceDto>? Services { get; set; }
 
+    [PersistentState] public List<ContentBlockDto>? Blocks { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         Settings ??= await Branding.GetAsync();
         Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Home));
         Contact ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact));
         Services ??= (await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: true))).ToList();
+        Blocks ??= (await UseCases.QueryAsync<GetContentBlocksQuery, IReadOnlyList<ContentBlockDto>>(new(null, PublishedOnly: true))).ToList();
     }
+
+    private IReadOnlyList<ContentBlockDto> Of(BlockKind kind) =>
+        Blocks?.Where(b => b.Kind == kind).ToList() ?? [];
 
     private string Render(string? text) => ContentText.Render(text, Settings?.CompanyName ?? string.Empty);
 }

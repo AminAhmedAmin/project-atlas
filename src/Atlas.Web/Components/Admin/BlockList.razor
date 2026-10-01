@@ -1,0 +1,108 @@
+@inject UseCases UseCases
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<div class="d-flex flex-wrap align-center justify-space-between gap-3 mb-4">
+    <MudText Typo="Typo.body2" Class="text-secondary" Style="max-width:680px">@Info.Description</MudText>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" StartIcon="@Icons.Material.Filled.Add" OnClick="() => EditAsync(null)">
+        Add @Info.Singular
+    </MudButton>
+</div>
+
+<MudTable T="ContentBlockDto" Items="_blocks" Hover="true" Elevation="0" Dense="true" Loading="_loading" Outlined="true"
+          OnRowClick="@((TableRowClickEventArgs<ContentBlockDto> e) => e.Item is null ? Task.CompletedTask : EditAsync(e.Item))" RowClass="cursor-pointer">
+    <HeaderContent>
+        <MudTh Style="width:70px">Order</MudTh>
+        <MudTh>@Info.TitleLabel</MudTh>
+        <MudTh Style="width:130px">Status</MudTh>
+        <MudTh Style="width:100px"></MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+        <MudTd DataLabel="@Info.TitleLabel">
+            <div class="d-flex align-center gap-3">
+                @if (Info.UsesImage && !string.IsNullOrWhiteSpace(context.ImageUrl))
+                {
+                    <img src="@context.ImageUrl" alt="" class="block-thumb" />
+                }
+                <div>
+                    <div class="message-from">@context.Title</div>
+                    @if (!string.IsNullOrWhiteSpace(context.Subtitle))
+                    {
+                        <MudText Typo="Typo.caption" Class="text-secondary d-block">@context.Subtitle</MudText>
+                    }
+                    @if (!string.IsNullOrWhiteSpace(context.Text))
+                    {
+                        <MudText Typo="Typo.caption" Class="text-secondary message-preview">@context.Text</MudText>
+                    }
+                </div>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Status">
+            @if (context.IsPublished)
+            {
+                <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Published</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Size="Size.Small" Variant="Variant.Text">Hidden</MudChip>
+            }
+        </MudTd>
+        <MudTd>
+            <div class="d-flex justify-end" @onclick:stopPropagation="true">
+                <MudIconButton Size="Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="() => EditAsync(context)" aria-label="Edit" />
+                <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Outlined.Delete" OnClick="() => DeleteAsync(context)" aria-label="Delete" />
+            </div>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Typo="Typo.body2" Class="pa-6 text-secondary">Nothing here yet. This section is hidden on the website until you add and publish an item.</MudText>
+    </NoRecordsContent>
+</MudTable>
+
+@code {
+    private IReadOnlyList<ContentBlockDto> _blocks = [];
+    private bool _loading = true;
+
+    [Parameter, EditorRequired] public BlockKind Kind { get; set; }
+
+    private BlockKindInfo Info => BlockKinds.For(Kind);
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _blocks = await UseCases.QueryAsync<GetContentBlocksQuery, IReadOnlyList<ContentBlockDto>>(new(Kind, PublishedOnly: false));
+        _loading = false;
+    }
+
+    private async Task EditAsync(ContentBlockDto? block)
+    {
+        var parameters = new DialogParameters<BlockDialog>
+        {
+            { d => d.Kind, Kind },
+            { d => d.Block, block },
+            { d => d.NextDisplayOrder, _blocks.Count == 0 ? 0 : _blocks.Max(b => b.DisplayOrder) + 1 },
+        };
+        var dialog = await Dialogs.ShowAsync<BlockDialog>(null, parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Saved.", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(ContentBlockDto block)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync("Delete", $"Delete \"{block.Title}\"? This cannot be undone.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        var result = await UseCases.SendAsync(new DeleteContentBlockCommand(block.Id));
+        Snackbar.Add(result.IsSuccess ? "Deleted." : result.ErrorMessage, result.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadAsync();
+    }
+}

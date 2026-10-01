@@ -1,0 +1,18 @@
+@if (Items.Count > 0)
+{
+    <MudContainer MaxWidth="MaxWidth.Large" Class="stats-band-container">
+        <div class="stats-band">
+            @foreach (var stat in Items)
+            {
+                <div class="stat">
+                    <div class="stat-value">@stat.Title</div>
+                    <div class="stat-label">@stat.Text</div>
+                </div>
+            }
+        </div>
+    </MudContainer>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ContentBlockDto> Items { get; set; } = [];
+}

@@ -1,0 +1,33 @@
+@if (Items.Count > 0)
+{
+    <section class="section">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <SectionHeading Eyebrow="Testimonials" Title="What our clients say" Centered="true" />
+            <div class="testimonials">
+                @foreach (var quote in Items)
+                {
+                    <figure class="testimonial">
+                        <MudIcon Icon="@Icons.Material.Filled.FormatQuote" Color="Color.Primary" Class="testimonial-mark" />
+                        <blockquote>@quote.Text</blockquote>
+                        <figcaption>
+                            <span class="testimonial-avatar">@Initial(quote.Title)</span>
+                            <span>
+                                <strong>@quote.Title</strong>
+                                @if (!string.IsNullOrWhiteSpace(quote.Subtitle))
+                                {
+                                    <span class="d-block text-secondary">@quote.Subtitle</span>
+                                }
+                            </span>
+                        </figcaption>
+                    </figure>
+                }
+            </div>
+        </MudContainer>
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ContentBlockDto> Items { get; set; } = [];
+
+    private static string Initial(string name) => string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
+}

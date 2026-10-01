@@ -1,0 +1,25 @@
+@if (Items.Count > 0)
+{
+    <section class="clients">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudText Typo="Typo.overline" Class="clients-title">Trusted by teams across the Kingdom</MudText>
+            <div class="clients-row">
+                @foreach (var client in Items)
+                {
+                    @if (!string.IsNullOrWhiteSpace(client.ImageUrl))
+                    {
+                        <img src="@client.ImageUrl" alt="@client.Title" class="client-logo" loading="lazy" />
+                    }
+                    else
+                    {
+                        <span class="client-name">@client.Title</span>
+                    }
+                }
+            </div>
+        </MudContainer>
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ContentBlockDto> Items { get; set; } = [];
+}

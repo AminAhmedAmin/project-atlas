@@ -1,0 +1,40 @@
+@using System.Text.Json
+
+@if (Items.Count > 0)
+{
+    <HeadContent>
+        @* FAQPage structured data lets search engines show these answers directly in results. *@
+        <script type="application/ld+json">@((MarkupString)StructuredData)</script>
+    </HeadContent>
+
+    <section class="section">
+        <MudContainer MaxWidth="MaxWidth.Medium">
+            <SectionHeading Eyebrow="FAQ" Title="Frequently asked questions" Centered="true" />
+            <MudExpansionPanels Elevation="0" Class="faq" MultiExpansion="false">
+                @foreach (var faq in Items)
+                {
+                    <MudExpansionPanel Text="@faq.Title" Class="faq-item">
+                        <MudText Typo="Typo.body1" Class="text-secondary faq-answer">@faq.Text</MudText>
+                    </MudExpansionPanel>
+                }
+            </MudExpansionPanels>
+        </MudContainer>
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ContentBlockDto> Items { get; set; } = [];
+
+    // System.Text.Json escapes '<' and '>' by default, so the JSON cannot close the script tag.
+    private string StructuredData => JsonSerializer.Serialize(new Dictionary<string, object>
+    {
+        ["@context"] = "https://schema.org",
+        ["@type"] = "FAQPage",
+        ["mainEntity"] = Items.Select(f => new Dictionary<string, object>
+        {
+            ["@type"] = "Question",
+            ["name"] = f.Title,
+            ["acceptedAnswer"] = new Dictionary<string, object> { ["@type"] = "Answer", ["text"] = f.Text ?? string.Empty },
+        }).ToList(),
+    });
+}

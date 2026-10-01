@@ -35,7 +35,8 @@ public sealed class SeederTests
         var db = scope.ServiceProvider.GetRequiredService<AtlasDbContext>();
         Assert.Equal("Configured Co", (await db.SiteSettings.SingleAsync(ct)).CompanyName);
         Assert.Equal(Enum.GetValues<PageKey>().Length, await db.PageContents.CountAsync(ct));
-        Assert.Equal(3, await db.Services.CountAsync(ct));
+        Assert.Equal(Application.Content.DefaultContent.Services.Count, await db.Services.CountAsync(ct));
+        Assert.Equal(Application.Content.DefaultContent.Blocks.Count, await db.ContentBlocks.CountAsync(ct));
         Assert.Equal(1, await db.Users.CountAsync(ct));
     }
 

@@ -37,6 +37,18 @@ public interface IServiceRepository
     void Remove(Service service);
 }
 
+public interface IContentBlockRepository
+{
+    Task<ContentBlock?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Blocks ordered by kind and display order, optionally filtered.</summary>
+    Task<IReadOnlyList<ContentBlock>> ListAsync(BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default);
+
+    void Add(ContentBlock block);
+
+    void Remove(ContentBlock block);
+}
+
 public sealed record ContactMessageSearch(string? Text, bool UnreadOnly, int Page, int PageSize);
 
 public interface IContactMessageRepository

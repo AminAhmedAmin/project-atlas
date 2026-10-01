@@ -1,0 +1,181 @@
+@inject UseCases UseCases
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Block is null ? $"Add {Info.Singular}" : $"Edit {Info.Singular}")</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="3">
+            <MudItem xs="12" sm="9">
+                <MudTextField @bind-Value="_model.Title" Label="@Info.TitleLabel" Variant="Variant.Outlined" Required="true"
+                              HelperText="@Info.TitleHelp" MaxLength="ContentBlock.TitleMaxLength"
+                              Error="_errors.Has(nameof(_model.Title))" ErrorText="@_errors.For(nameof(_model.Title))" />
+            </MudItem>
+            <MudItem xs="12" sm="3">
+                <MudNumericField T="int" @bind-Value="_model.DisplayOrder" Label="Order" Variant="Variant.Outlined" Min="0"
+                                 Error="_errors.Has(nameof(_model.DisplayOrder))" ErrorText="@_errors.For(nameof(_model.DisplayOrder))" />
+            </MudItem>
+            @if (Info.SubtitleLabel is not null)
+            {
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="_model.Subtitle" Label="@Info.SubtitleLabel" Variant="Variant.Outlined"
+                                  MaxLength="ContentBlock.SubtitleMaxLength"
+                                  Error="_errors.Has(nameof(_model.Subtitle))" ErrorText="@_errors.For(nameof(_model.Subtitle))" />
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_model.Text" Label="@Info.TextLabel" Variant="Variant.Outlined"
+                              Lines="@(Kind is BlockKind.Stat ? 1 : 4)" Sizing="InputSizing.Auto" MaxLength="ContentBlock.TextMaxLength"
+                              Error="_errors.Has(nameof(_model.Text))" ErrorText="@_errors.For(nameof(_model.Text))" />
+            </MudItem>
+            @if (Info.UsesImage)
+            {
+                <MudItem xs="12">
+                    <div class="d-flex flex-wrap align-center gap-3">
+                        <div class="logo-preview block-logo-preview">
+                            @if (!string.IsNullOrWhiteSpace(_model.ImageUrl))
+                            {
+                                <img src="@_model.ImageUrl" alt="@_model.Title" />
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Class="text-secondary">No logo</MudText>
+                            }
+                        </div>
+                        <MudFileUpload @ref="_upload" T="IBrowserFile" Accept=".png,.jpg,.jpeg,.webp" FilesChanged="UploadAsync" Disabled="_uploading">
+                            <CustomContent>
+                                <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Upload"
+                                           Disabled="_uploading" OnClick="@context.OpenFilePickerAsync">
+                                    @(_uploading ? "Uploading…" : "Upload logo")
+                                </MudButton>
+                            </CustomContent>
+                        </MudFileUpload>
+                        @if (!string.IsNullOrWhiteSpace(_model.ImageUrl))
+                        {
+                            <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="() => _model.ImageUrl = null">Remove</MudButton>
+                        }
+                    </div>
+                    <MudText Typo="Typo.caption" Class="text-secondary d-block mt-2">PNG, JPEG or WebP up to 2 MB. Logos with a transparent background look best.</MudText>
+                </MudItem>
+            }
+            <MudItem xs="12">
+                <MudSwitch T="bool" @bind-Value="_model.IsPublished" Color="Color.Primary" Label="Published on website" />
+            </MudItem>
+            @if (_errors.General is not null)
+            {
+                <MudItem xs="12"><MudAlert Severity="Severity.Error" Dense="true">@_errors.General</MudAlert></MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" DropShadow="false" Disabled="@(_saving || _uploading)" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private BlockModel _model = new();
+    private readonly FieldErrors _errors = new();
+    private MudFileUpload<IBrowserFile>? _upload;
+    private bool _saving;
+    private bool _uploading;
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter, EditorRequired] public BlockKind Kind { get; set; }
+
+    /// <summary>The block to edit, or null to add one.</summary>
+    [Parameter] public ContentBlockDto? Block { get; set; }
+
+    [Parameter] public int NextDisplayOrder { get; set; }
+
+    private BlockKindInfo Info => BlockKinds.For(Kind);
+
+    protected override void OnInitialized()
+    {
+        _model = Block is null
+            ? new BlockModel { DisplayOrder = NextDisplayOrder, IsPublished = true }
+            : new BlockModel
+            {
+                Title = Block.Title,
+                Subtitle = Block.Subtitle,
+                Text = Block.Text,
+                ImageUrl = Block.ImageUrl,
+                DisplayOrder = Block.DisplayOrder,
+                IsPublished = Block.IsPublished,
+            };
+    }
+
+    private async Task UploadAsync(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        if (file.Size > ImageUpload.MaxBytes)
+        {
+            Snackbar.Add("The image must be 2 MB or smaller.", Severity.Warning);
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            await using var stream = file.OpenReadStream(ImageUpload.MaxBytes);
+            var result = await UseCases.SendAsync<UploadContentImageCommand, string>(new(stream, file.Name, file.ContentType, file.Size));
+            if (result.IsSuccess)
+            {
+                _model.ImageUrl = result.Value;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage, Severity.Error);
+            }
+        }
+        finally
+        {
+            _uploading = false;
+            if (_upload is not null)
+            {
+                await _upload.ClearAsync();
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            var result = await UseCases.SendAsync<SaveContentBlockCommand, ContentBlockDto>(new(
+                Block?.Id, Kind, _model.Title, _model.Subtitle, _model.Text, _model.ImageUrl, _model.DisplayOrder, _model.IsPublished));
+
+            _errors.Set(result);
+            if (result.IsSuccess)
+            {
+                Dialog.Close(DialogResult.Ok(result.Value));
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class BlockModel
+    {
+        public string Title { get; set; } = string.Empty;
+
+        public string? Subtitle { get; set; }
+
+        public string? Text { get; set; }
+
+        public string? ImageUrl { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsPublished { get; set; }
+    }
+}

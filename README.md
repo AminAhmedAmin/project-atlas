@@ -22,7 +22,8 @@ server), **MudBlazor**, **EF Core 10** (SQL Server) and **ASP.NET Core Identity*
 
 ## Features
 
-**Public website**: Home (hero, services summary, call to action), Services, About and Contact.
+**Public website**: Home (hero with illustration, key numbers, client logos, services, "How we
+work" steps, testimonials, FAQ and call to action), Services, About and Contact.
 - All page text, the services list and SEO meta descriptions are editable from the dashboard.
   Editable text can use the `{company}` token, which is replaced with the configured company name.
 - The contact form validates input and stores messages in the database. A honeypot field and a
@@ -37,6 +38,10 @@ server), **MudBlazor**, **EF Core 10** (SQL Server) and **ASP.NET Core Identity*
 - **Messages**: inbox with search, unread filter and paging. Open a message, mark it read or
   unread, reply by e-mail, or delete it.
 - **Pages**: edit the text and SEO description of each public page.
+- **Home page**: manage the numbers band, client logos (with upload), process steps, testimonials
+  and FAQ. FAQ entries are also published as `FAQPage` structured data for Google. Sample
+  testimonials and client logos are seeded **hidden**: replace them with real ones before
+  publishing.
 - **Services**: create, edit, reorder, publish/hide and delete services.
 - **Settings**: company name, tagline, contact e-mail, primary color and logo upload. Changes
   apply to every open page immediately.
@@ -69,7 +74,7 @@ The solution follows Clean Architecture. Dependencies point inwards only, and
 
 | Project | Responsibility |
 |---|---|
-| `src/Atlas.Domain` | Entities (`SiteSettings`, `PageContent`, `Service`, `ContactMessage`), value objects (`HexColor`, `EmailAddress`) and invariants. Has no package references. |
+| `src/Atlas.Domain` | Entities (`SiteSettings`, `PageContent`, `Service`, `ContentBlock`, `ContactMessage`), value objects (`HexColor`, `EmailAddress`) and invariants. Has no package references. |
 | `src/Atlas.Application` | One file per use case: a command or query record, an optional validator and a handler. Defines the interfaces for persistence, file storage, e-mail and user administration. Maps to DTOs by hand. |
 | `src/Atlas.Infrastructure` | `AtlasDbContext` (Identity + domain tables), repositories, migrations, `UserAdminService` over ASP.NET Core Identity, local file storage, a logging e-mail sender, the database seeder and the health check. |
 | `src/Atlas.Web` | Blazor Web App: public pages, `/admin` dashboard, sign-in pages, DI wiring, health/SEO endpoints. |
@@ -174,7 +179,8 @@ How seeding behaves:
 - Passwords need at least 12 characters, with upper- and lower-case letters and a digit.
 - Further users are managed from **/admin/users**. There is no public registration.
 
-Starter settings, page texts and three sample services are written **once**, on first run (when
+Starter settings, page texts, services and home page sections (written for web and mobile app
+work in Saudi Arabia) are written **once**, on first run (when
 no settings row exists). After that the dashboard owns them. Deleting a starter service does not
 bring it back.
 

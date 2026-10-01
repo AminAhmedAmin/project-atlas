@@ -54,6 +54,7 @@ public static class DependencyInjection
         services.AddScoped<IPageContentRepository, PageContentRepository>();
         services.AddScoped<IServiceRepository, ServiceRepository>();
         services.AddScoped<IContactMessageRepository, ContactMessageRepository>();
+        services.AddScoped<IContentBlockRepository, ContentBlockRepository>();
 
         services.AddIdentityCore<ApplicationUser>(options =>
             {

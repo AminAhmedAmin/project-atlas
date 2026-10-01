@@ -125,6 +125,14 @@ public sealed partial class DatabaseSeeder(
             }
         }
 
+        if (!await db.ContentBlocks.AnyAsync(cancellationToken))
+        {
+            foreach (var (kind, fields) in DefaultContent.Blocks)
+            {
+                db.ContentBlocks.Add(ContentBlock.Create(kind, fields, now));
+            }
+        }
+
         await db.SaveChangesAsync(cancellationToken);
         LogStarterContentSeeded(logger);
     }
@@ -150,6 +158,6 @@ public sealed partial class DatabaseSeeder(
     [LoggerMessage(Level = LogLevel.Information, Message = "Created initial admin user {Email}")]
     private static partial void LogAdminCreated(ILogger logger, string email);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Seeded default settings, page content and services")]
+    [LoggerMessage(Level = LogLevel.Information, Message = "Seeded default settings, page content, services and home page blocks")]
     private static partial void LogStarterContentSeeded(ILogger logger);
 }

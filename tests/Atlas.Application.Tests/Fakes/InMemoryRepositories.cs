@@ -92,3 +92,21 @@ internal sealed class InMemoryContactMessageRepository : IContactMessageReposito
 
     public void Remove(ContactMessage message) => Messages.Remove(message);
 }
+
+internal sealed class InMemoryContentBlockRepository : IContentBlockRepository
+{
+    public List<ContentBlock> Blocks { get; } = [];
+
+    public Task<ContentBlock?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Blocks.FirstOrDefault(b => b.Id == id));
+
+    public Task<IReadOnlyList<ContentBlock>> ListAsync(BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<ContentBlock>>(Blocks
+            .Where(b => kind is null || b.Kind == kind)
+            .Where(b => !publishedOnly || b.IsPublished)
+            .ToList());
+
+    public void Add(ContentBlock block) => Blocks.Add(block);
+
+    public void Remove(ContentBlock block) => Blocks.Remove(block);
+}

@@ -47,6 +47,32 @@ internal sealed class ServiceRepository(AtlasDbContext db) : IServiceRepository
     public void Remove(Service service) => db.Services.Remove(service);
 }
 
+internal sealed class ContentBlockRepository(AtlasDbContext db) : IContentBlockRepository
+{
+    public Task<ContentBlock?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.ContentBlocks.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<ContentBlock>> ListAsync(BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default)
+    {
+        var query = db.ContentBlocks.AsNoTracking();
+        if (kind is { } k)
+        {
+            query = query.Where(b => b.Kind == k);
+        }
+
+        if (publishedOnly)
+        {
+            query = query.Where(b => b.IsPublished);
+        }
+
+        return await query.OrderBy(b => b.Kind).ThenBy(b => b.DisplayOrder).ToListAsync(cancellationToken);
+    }
+
+    public void Add(ContentBlock block) => db.ContentBlocks.Add(block);
+
+    public void Remove(ContentBlock block) => db.ContentBlocks.Remove(block);
+}
+
 internal sealed class ContactMessageRepository(AtlasDbContext db) : IContactMessageRepository
 {
     public Task<ContactMessage?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
