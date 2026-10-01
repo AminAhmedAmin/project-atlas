@@ -1,0 +1,86 @@
+@page "/work/{Slug}"
+@page "/ar/work/{Slug}"
+@using Atlas.Application.Portfolio
+@inherits PublicComponentBase
+@inject BrandingService Branding
+@inject UseCases UseCases
+
+@if (Settings is not null && Study is not null)
+{
+    <SeoHead Title="@Study.Title" Description="@Study.Summary" CompanyName="@CompanyNameOf(Settings, Lang)" />
+
+    <section class="page-header case-hero">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <MudLink Href="@Href("/work")" Typo="Typo.body2" Class="case-back">@L("Back to all work")</MudLink>
+            @if (Study.TagList.Count > 0)
+            {
+                <div class="case-tags mt-4">
+                    @foreach (var tag in Study.TagList)
+                    {
+                        <span class="case-tag">@tag</span>
+                    }
+                </div>
+            }
+            <MudText Typo="Typo.h3" HtmlTag="h1" Class="mt-2 mb-3">@Study.Title</MudText>
+            <MudText Typo="Typo.subtitle1" Class="page-header-subtitle">@Study.Summary</MudText>
+            @if (!string.IsNullOrWhiteSpace(Study.Client))
+            {
+                <MudText Typo="Typo.body2" Class="mt-3"><span class="text-secondary">@L("Client"):</span> <strong>@Study.Client</strong></MudText>
+            }
+        </MudContainer>
+    </section>
+
+    <section class="section pt-4">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            @if (!string.IsNullOrWhiteSpace(Study.CoverImageUrl))
+            {
+                <img src="@Study.CoverImageUrl" alt="@Study.Title" class="case-detail-cover" />
+            }
+            <div class="case-detail-grid @(string.IsNullOrWhiteSpace(Study.Body) ? "no-story" : "")">
+                <div class="prose">
+                    @if (!string.IsNullOrWhiteSpace(Study.Body))
+                    {
+                        <MudText Typo="Typo.h5" HtmlTag="h2" Class="mb-4">@L("The story")</MudText>
+                        @foreach (var paragraph in ContentText.Paragraphs(Study.Body, CompanyNameOf(Settings, Lang)))
+                        {
+                            <MudText Typo="Typo.body1" Class="mb-5 about-paragraph">@paragraph</MudText>
+                        }
+                    }
+                </div>
+                @if (Study.HighlightList.Count > 0)
+                {
+                    <aside class="case-results">
+                        <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">@L("Results")</MudText>
+                        <ul>
+                            @foreach (var highlight in Study.HighlightList)
+                            {
+                                <li><MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Primary" Size="Size.Small" /> <span>@highlight</span></li>
+                            }
+                        </ul>
+                        <MudButton Href="@Href("/contact")" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" FullWidth="true" Class="mt-4">
+                            @L("Start a similar project")
+                        </MudButton>
+                    </aside>
+                }
+            </div>
+        </MudContainer>
+    </section>
+}
+
+@code {
+    [Parameter] public string Slug { get; set; } = string.Empty;
+
+    [PersistentState] public SiteSettingsDto? Settings { get; set; }
+
+    [PersistentState] public CaseStudyDto? Study { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Settings ??= await Branding.GetAsync();
+        Study ??= await UseCases.QueryAsync<GetCaseStudyQuery, CaseStudyDto?>(new(Lang, Slug));
+        if (Study is null)
+        {
+            Navigation.NotFound();
+        }
+    }
+}

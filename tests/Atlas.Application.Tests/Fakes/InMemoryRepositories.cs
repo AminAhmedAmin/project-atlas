@@ -115,3 +115,28 @@ internal sealed class InMemoryContentBlockRepository : IContentBlockRepository
 
     public void Remove(ContentBlock block) => Blocks.Remove(block);
 }
+
+internal sealed class InMemoryCaseStudyRepository : ICaseStudyRepository
+{
+    public List<Domain.Portfolio.CaseStudy> Studies { get; } = [];
+
+    public Task<Domain.Portfolio.CaseStudy?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Studies.FirstOrDefault(s => s.Id == id));
+
+    public Task<Domain.Portfolio.CaseStudy?> GetBySlugAsync(SiteLanguage language, string slug, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Studies.FirstOrDefault(s => s.Language == language && s.Slug == slug));
+
+    public Task<IReadOnlyList<Domain.Portfolio.CaseStudy>> ListAsync(SiteLanguage? language, bool publishedOnly, bool featuredOnly, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Domain.Portfolio.CaseStudy>>(Studies
+            .Where(s => language is null || s.Language == language)
+            .Where(s => !publishedOnly || s.IsPublished)
+            .Where(s => !featuredOnly || s.IsFeatured)
+            .ToList());
+
+    public Task<bool> SlugExistsAsync(SiteLanguage language, string slug, Guid? excludingId, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Studies.Any(s => s.Language == language && s.Slug == slug && s.Id != excludingId));
+
+    public void Add(Domain.Portfolio.CaseStudy caseStudy) => Studies.Add(caseStudy);
+
+    public void Remove(Domain.Portfolio.CaseStudy caseStudy) => Studies.Remove(caseStudy);
+}

@@ -41,6 +41,7 @@ public sealed class SeederTests
             Assert.Equal(Enum.GetValues<PageKey>().Length, await db.PageContents.CountAsync(p => p.Language == language, ct));
             Assert.Equal(DefaultContent.ServicesFor(language).Count, await db.Services.CountAsync(s => s.Language == language, ct));
             Assert.Equal(DefaultContent.BlocksFor(language).Count, await db.ContentBlocks.CountAsync(b => b.Language == language, ct));
+            Assert.False((await db.CaseStudies.SingleAsync(c => c.Language == language, ct)).IsPublished);
         }
         Assert.Equal(1, await db.Users.CountAsync(ct));
     }

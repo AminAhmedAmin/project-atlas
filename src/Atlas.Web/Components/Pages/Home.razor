@@ -67,6 +67,24 @@
         </section>
     }
 
+    @if (Featured is { Count: > 0 })
+    {
+        <section class="section">
+            <MudContainer MaxWidth="MaxWidth.Large">
+                <div class="d-flex flex-wrap align-end justify-space-between gap-4">
+                    <SectionHeading Eyebrow="@L("Our work")" Title="@L("Projects we're proud of")" />
+                    <MudButton Href="@Href("/work")" Variant="Variant.Text" Color="Color.Primary" EndIcon="@ForwardIcon" Class="mb-10">@L("View all work")</MudButton>
+                </div>
+                <div class="case-grid">
+                    @foreach (var study in Featured.Take(3))
+                    {
+                        <CaseStudyCard Study="study" />
+                    }
+                </div>
+            </MudContainer>
+        </section>
+    }
+
     <ProcessSteps Items="@Of(BlockKind.ProcessStep)" Lead="@Render(Page.Body)" />
 
     <Testimonials Items="@Of(BlockKind.Testimonial)" />
@@ -101,6 +119,8 @@
 
     [PersistentState] public List<ContentBlockDto>? Blocks { get; set; }
 
+    [PersistentState] public List<Atlas.Application.Portfolio.CaseStudyDto>? Featured { get; set; }
+
     protected override async Task OnInitializedAsync()
     {
         Settings ??= await Branding.GetAsync();
@@ -108,6 +128,8 @@
         Contact ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact, Lang));
         Services ??= (await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: true, Lang))).ToList();
         Blocks ??= (await UseCases.QueryAsync<GetContentBlocksQuery, IReadOnlyList<ContentBlockDto>>(new(null, PublishedOnly: true, Lang))).ToList();
+        Featured ??= (await UseCases.QueryAsync<Atlas.Application.Portfolio.GetCaseStudiesQuery, IReadOnlyList<Atlas.Application.Portfolio.CaseStudyDto>>(
+            new(Lang, PublishedOnly: true, FeaturedOnly: true))).ToList();
     }
 
     private IReadOnlyList<ContentBlockDto> Of(BlockKind kind) =>

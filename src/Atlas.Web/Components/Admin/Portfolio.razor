@@ -1,0 +1,120 @@
+@page "/admin/work"
+@using Atlas.Application.Portfolio
+@inject UseCases UseCases
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Portfolio | Admin</PageTitle>
+
+<AdminPageHeader Title="Portfolio" Description="Case studies shown on the Our work page. Featured ones also appear on the home page. The menu link appears once one is published.">
+    <Actions>
+        <LanguageSwitch Value="_language" ValueChanged="ChangeLanguageAsync" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" StartIcon="@Icons.Material.Filled.Add" OnClick="() => EditAsync(null)">
+            Add case study
+        </MudButton>
+    </Actions>
+</AdminPageHeader>
+
+<MudPaper Outlined="true" Elevation="0">
+    <MudTable T="CaseStudyDto" Items="_studies" Hover="true" Elevation="0" Loading="_loading"
+              OnRowClick="@((TableRowClickEventArgs<CaseStudyDto> e) => e.Item is null ? Task.CompletedTask : EditAsync(e.Item))" RowClass="cursor-pointer">
+        <HeaderContent>
+            <MudTh Style="width:70px">Order</MudTh>
+            <MudTh>Case study</MudTh>
+            <MudTh Style="width:200px">Status</MudTh>
+            <MudTh Style="width:140px"></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+            <MudTd DataLabel="Case study">
+                <div class="d-flex align-center gap-3">
+                    @if (!string.IsNullOrWhiteSpace(context.CoverImageUrl))
+                    {
+                        <img src="@context.CoverImageUrl" alt="" class="block-thumb case-thumb" />
+                    }
+                    <div dir="auto">
+                        <div class="message-from">@context.Title</div>
+                        <MudText Typo="Typo.caption" Class="text-secondary d-block">@context.Client · /work/@context.Slug</MudText>
+                    </div>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsPublished)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Published</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">Hidden</MudChip>
+                }
+                @if (context.IsFeatured)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text">Featured</MudChip>
+                }
+            </MudTd>
+            <MudTd>
+                <div class="d-flex justify-end" @onclick:stopPropagation="true">
+                    @if (context.IsPublished)
+                    {
+                        <MudIconButton Size="Size.Small" Icon="@Icons.Material.Outlined.OpenInNew" Href="@SiteLanguages.Localize($"/work/{context.Slug}", context.Language)" Target="_blank" aria-label="View" />
+                    }
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="() => EditAsync(context)" aria-label="Edit" />
+                    <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Outlined.Delete" OnClick="() => DeleteAsync(context)" aria-label="Delete" />
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Class="pa-6 text-secondary">No case studies yet. Add your first project.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private IReadOnlyList<CaseStudyDto> _studies = [];
+    private SiteLanguage _language = SiteLanguage.English;
+    private bool _loading = true;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _studies = await UseCases.QueryAsync<GetCaseStudiesQuery, IReadOnlyList<CaseStudyDto>>(new(_language, PublishedOnly: false));
+        _loading = false;
+    }
+
+    private async Task ChangeLanguageAsync(SiteLanguage language)
+    {
+        _language = language;
+        await LoadAsync();
+    }
+
+    private async Task EditAsync(CaseStudyDto? study)
+    {
+        var parameters = new DialogParameters<CaseStudyDialog>
+        {
+            { d => d.Study, study },
+            { d => d.Language, _language },
+            { d => d.NextDisplayOrder, _studies.Count == 0 ? 0 : _studies.Max(s => s.DisplayOrder) + 1 },
+        };
+        var dialog = await Dialogs.ShowAsync<CaseStudyDialog>(null, parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        if (await dialog.Result is { Canceled: false })
+        {
+            Snackbar.Add("Case study saved.", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private async Task DeleteAsync(CaseStudyDto study)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync("Delete case study", $"Delete \"{study.Title}\"? This cannot be undone.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        var result = await UseCases.SendAsync(new DeleteCaseStudyCommand(study.Id));
+        Snackbar.Add(result.IsSuccess ? "Case study deleted." : result.ErrorMessage, result.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadAsync();
+    }
+}

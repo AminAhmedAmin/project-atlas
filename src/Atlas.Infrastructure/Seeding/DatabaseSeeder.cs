@@ -3,6 +3,7 @@ using Atlas.Application.Security;
 using Atlas.Application.Settings;
 using Atlas.Domain.Common;
 using Atlas.Domain.Content;
+using Atlas.Domain.Portfolio;
 using Atlas.Domain.Settings;
 using Atlas.Infrastructure.Identity;
 using Atlas.Infrastructure.Persistence;
@@ -131,6 +132,11 @@ public sealed partial class DatabaseSeeder(
             foreach (var (kind, fields) in DefaultContent.BlocksFor(language))
             {
                 db.ContentBlocks.Add(ContentBlock.Create(kind, fields, now, language));
+            }
+
+            if (!await db.CaseStudies.AnyAsync(c => c.Language == language, cancellationToken))
+            {
+                db.CaseStudies.Add(CaseStudy.Create(language, DefaultContent.SampleCaseStudy(language), now));
             }
 
             LogLanguageSeeded(logger, language);

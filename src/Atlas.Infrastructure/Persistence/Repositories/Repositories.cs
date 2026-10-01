@@ -3,6 +3,7 @@ using Atlas.Application.Common;
 using Atlas.Domain.Common;
 using Atlas.Domain.Contact;
 using Atlas.Domain.Content;
+using Atlas.Domain.Portfolio;
 using Atlas.Domain.Settings;
 using Microsoft.EntityFrameworkCore;
 
@@ -82,6 +83,43 @@ internal sealed class ContentBlockRepository(AtlasDbContext db) : IContentBlockR
     public void Add(ContentBlock block) => db.ContentBlocks.Add(block);
 
     public void Remove(ContentBlock block) => db.ContentBlocks.Remove(block);
+}
+
+internal sealed class CaseStudyRepository(AtlasDbContext db) : ICaseStudyRepository
+{
+    public Task<CaseStudy?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.CaseStudies.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+    public Task<CaseStudy?> GetBySlugAsync(SiteLanguage language, string slug, CancellationToken cancellationToken = default) =>
+        db.CaseStudies.AsNoTracking().FirstOrDefaultAsync(c => c.Language == language && c.Slug == slug, cancellationToken);
+
+    public async Task<IReadOnlyList<CaseStudy>> ListAsync(SiteLanguage? language, bool publishedOnly, bool featuredOnly, CancellationToken cancellationToken = default)
+    {
+        var query = db.CaseStudies.AsNoTracking();
+        if (language is { } lang)
+        {
+            query = query.Where(c => c.Language == lang);
+        }
+
+        if (publishedOnly)
+        {
+            query = query.Where(c => c.IsPublished);
+        }
+
+        if (featuredOnly)
+        {
+            query = query.Where(c => c.IsFeatured);
+        }
+
+        return await query.OrderBy(c => c.DisplayOrder).ToListAsync(cancellationToken);
+    }
+
+    public Task<bool> SlugExistsAsync(SiteLanguage language, string slug, Guid? excludingId, CancellationToken cancellationToken = default) =>
+        db.CaseStudies.AnyAsync(c => c.Language == language && c.Slug == slug && c.Id != excludingId, cancellationToken);
+
+    public void Add(CaseStudy caseStudy) => db.CaseStudies.Add(caseStudy);
+
+    public void Remove(CaseStudy caseStudy) => db.CaseStudies.Remove(caseStudy);
 }
 
 internal sealed class ContactMessageRepository(AtlasDbContext db) : IContactMessageRepository

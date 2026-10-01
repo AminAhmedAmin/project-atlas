@@ -1,6 +1,7 @@
 using Atlas.Application.Common;
 using Atlas.Domain.Common;
 using Atlas.Domain.Contact;
+using Atlas.Domain.Portfolio;
 using Atlas.Domain.Content;
 using Atlas.Domain.Settings;
 
@@ -49,6 +50,22 @@ public interface IContentBlockRepository
     void Add(ContentBlock block);
 
     void Remove(ContentBlock block);
+}
+
+public interface ICaseStudyRepository
+{
+    Task<CaseStudy?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
+
+    Task<CaseStudy?> GetBySlugAsync(SiteLanguage language, string slug, CancellationToken cancellationToken = default);
+
+    /// <summary>Case studies in display order, optionally filtered.</summary>
+    Task<IReadOnlyList<CaseStudy>> ListAsync(SiteLanguage? language, bool publishedOnly, bool featuredOnly, CancellationToken cancellationToken = default);
+
+    Task<bool> SlugExistsAsync(SiteLanguage language, string slug, Guid? excludingId, CancellationToken cancellationToken = default);
+
+    void Add(CaseStudy caseStudy);
+
+    void Remove(CaseStudy caseStudy);
 }
 
 public sealed record ContactMessageSearch(string? Text, bool UnreadOnly, int Page, int PageSize);

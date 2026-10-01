@@ -2,6 +2,7 @@
 @implements IDisposable
 @inject BrandingService Branding
 @inject NavigationManager Navigation
+@inject UseCases UseCases
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -97,13 +98,20 @@
 </div>
 
 @code {
-    private static readonly (string Path, string Label, NavLinkMatch Match)[] Links =
+    private static readonly (string Path, string Label, NavLinkMatch Match)[] AllLinks =
     [
         ("/", "Home", NavLinkMatch.All),
         ("/services", "Services", NavLinkMatch.Prefix),
+        ("/work", "Our work", NavLinkMatch.Prefix),
         ("/about", "About", NavLinkMatch.Prefix),
         ("/contact", "Contact", NavLinkMatch.Prefix),
     ];
+
+    // "Our work" only appears once at least one case study is published in this language.
+    private bool _hasWork;
+
+    private IEnumerable<(string Path, string Label, NavLinkMatch Match)> Links =>
+        AllLinks.Where(l => _hasWork || l.Path != "/work");
 
     private SiteSettingsDto? _settings;
     private MudTheme _theme = new();
@@ -125,6 +133,8 @@
     protected override async Task OnInitializedAsync()
     {
         Apply(await Branding.GetAsync());
+        _hasWork = (await UseCases.QueryAsync<Atlas.Application.Portfolio.GetCaseStudiesQuery, IReadOnlyList<Atlas.Application.Portfolio.CaseStudyDto>>(
+            new(Lang, PublishedOnly: true))).Count > 0;
         Branding.Changed += OnBrandingChanged;
         Navigation.LocationChanged += OnLocationChanged;
     }

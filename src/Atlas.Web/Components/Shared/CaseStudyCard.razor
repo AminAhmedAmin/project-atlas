@@ -1,0 +1,39 @@
+@using Atlas.Application.Portfolio
+@inherits PublicComponentBase
+
+<a class="case-card" href="@Href($"/work/{Study.Slug}")">
+    <div class="case-cover">
+        @if (!string.IsNullOrWhiteSpace(Study.CoverImageUrl))
+        {
+            <img src="@Study.CoverImageUrl" alt="@Study.Title" loading="lazy" />
+        }
+        else
+        {
+            <span class="case-cover-placeholder">@Initial</span>
+        }
+    </div>
+    <div class="case-body">
+        @if (Study.TagList.Count > 0)
+        {
+            <div class="case-tags">
+                @foreach (var tag in Study.TagList.Take(3))
+                {
+                    <span class="case-tag">@tag</span>
+                }
+            </div>
+        }
+        <MudText Typo="Typo.h6" HtmlTag="h3" Class="mb-1">@Study.Title</MudText>
+        @if (!string.IsNullOrWhiteSpace(Study.Client))
+        {
+            <MudText Typo="Typo.caption" Class="text-secondary d-block mb-2">@Study.Client</MudText>
+        }
+        <MudText Typo="Typo.body2" Class="text-secondary">@Study.Summary</MudText>
+        <span class="case-link">@L("View case study") <MudIcon Icon="@ForwardIcon" Size="Size.Small" /></span>
+    </div>
+</a>
+
+@code {
+    [Parameter, EditorRequired] public CaseStudyDto Study { get; set; } = default!;
+
+    private string Initial => string.IsNullOrEmpty(Study.Title) ? "?" : Study.Title[..1].ToUpperInvariant();
+}

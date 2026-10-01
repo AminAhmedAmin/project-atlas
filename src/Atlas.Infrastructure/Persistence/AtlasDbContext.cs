@@ -1,6 +1,7 @@
 using Atlas.Application.Abstractions;
 using Atlas.Domain.Contact;
 using Atlas.Domain.Content;
+using Atlas.Domain.Portfolio;
 using Atlas.Domain.Settings;
 using Atlas.Infrastructure.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -20,6 +21,8 @@ public sealed class AtlasDbContext(DbContextOptions<AtlasDbContext> options)
     public DbSet<ContactMessage> ContactMessages => Set<ContactMessage>();
 
     public DbSet<ContentBlock> ContentBlocks => Set<ContentBlock>();
+
+    public DbSet<CaseStudy> CaseStudies => Set<CaseStudy>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

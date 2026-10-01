@@ -75,6 +75,20 @@ public static class UiText
         ["Not sure yet"] = "لم أحدد بعد",
         ["Ask about this service"] = "استفسر عن هذه الخدمة",
 
+        // Portfolio
+        ["Projects we're proud of"] = "مشاريع نفخر بها",
+        ["Real projects for real businesses, and the results they achieved."] = "مشاريع حقيقية لشركات حقيقية، والنتائج التي حققتها.",
+        ["View all work"] = "عرض جميع الأعمال",
+        ["View case study"] = "عرض دراسة الحالة",
+        ["Case studies are coming soon."] = "ستُعرض دراسات الحالة هنا قريبًا.",
+        ["Results"] = "النتائج",
+        ["Client"] = "العميل",
+        ["The story"] = "القصة",
+        ["Start a similar project"] = "ابدأ مشروعًا مشابهًا",
+        ["Back to all work"] = "العودة إلى جميع الأعمال",
+        ["Have a project in mind?"] = "لديك فكرة مشروع؟",
+        ["Tell us about it and get a free estimate."] = "أخبرنا عنها واحصل على تقدير مجاني.",
+
         // WhatsApp
         ["Chat on WhatsApp"] = "تواصل عبر واتساب",
         ["Prefer WhatsApp?"] = "تفضّل واتساب؟",

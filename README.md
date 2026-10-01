@@ -30,6 +30,8 @@ work" steps, testimonials, FAQ and call to action), Services, About and Contact.
   (in SAR) and the message, and stores it in the database. "Ask about this service" links on the
   Services page preselect the service. A honeypot field and a short cooldown stop simple spam, and
   the contact e-mail (if set) is notified.
+- **Portfolio** at `/work` (and `/ar/work`): case studies with cover image, client, tags, results
+  and story. Featured ones appear on the home page; the menu link appears once one is published.
 - A floating **WhatsApp** button appears on every page once a WhatsApp number is set in
   **/admin/settings** (Saudi numbers like `05x xxx xxxx` are converted to `9665…` automatically).
 - **English and Arabic.** English pages live at `/…` and Arabic pages at `/ar/…`, with a
@@ -54,6 +56,8 @@ work" steps, testimonials, FAQ and call to action), Services, About and Contact.
 - **Services**: create, edit, reorder, publish/hide and delete services.
 - **Settings**: company name, tagline, contact e-mail, primary color and logo upload. Changes
   apply to every open page immediately.
+- **Portfolio**: create case studies per language with cover upload; mark them published and
+  featured. A hidden sample shows the format.
 - **Users**: list users, create users, and grant or revoke the Admin role. You can't remove your
   own Admin role, and the last admin can't be demoted.
 - Sidebar navigation, dark/light mode toggle (remembered per browser) and a responsive layout.

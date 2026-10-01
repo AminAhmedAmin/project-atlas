@@ -1,5 +1,6 @@
 using Atlas.Domain.Common;
 using Atlas.Domain.Content;
+using Atlas.Domain.Portfolio;
 
 namespace Atlas.Application.Content;
 
@@ -21,6 +22,27 @@ public static class DefaultContent
     /// <summary>Starter home page blocks. Samples that would be false claims are seeded unpublished.</summary>
     public static IReadOnlyList<(BlockKind Kind, ContentBlockFields Fields)> BlocksFor(SiteLanguage language) =>
         language == SiteLanguage.Arabic ? ArabicBlocks : EnglishBlocks;
+
+    /// <summary>A hidden sample case study per language, showing admins what a good one looks like.</summary>
+    public static CaseStudyFields SampleCaseStudy(SiteLanguage language) => language == SiteLanguage.Arabic
+        ? new CaseStudyFields(
+            Slug: "sample-project",
+            Title: "مثال: تطبيق حجز مواعيد لعيادة",
+            Summary: "استبدل هذا المثال بأحد مشاريعك الحقيقية. يبقى مخفيًا حتى تنشره.",
+            Client: "اسم العميل",
+            Highlights: "زيادة الحجوزات عبر الإنترنت بنسبة 40%\nتطبيق iOS وAndroid بالعربية والإنجليزية\nإطلاق خلال 12 أسبوعًا",
+            Body: "التحدي: صف المشكلة التي كان العميل يواجهها.\n\nالحل: اشرح ما بنيتموه وكيف.\n\nالنتيجة: اذكر الأرقام والنتائج التي تحققت.",
+            Tags: "جوال, ويب",
+            IsPublished: false)
+        : new CaseStudyFields(
+            Slug: "sample-project",
+            Title: "Sample: clinic booking app",
+            Summary: "Replace this sample with one of your real projects. It stays hidden until you publish it.",
+            Client: "Client name",
+            Highlights: "40% more online bookings\niOS and Android apps in Arabic and English\nLaunched in 12 weeks",
+            Body: "The challenge: describe the problem the client had.\n\nThe solution: explain what you built and how.\n\nThe result: share the numbers and outcomes.",
+            Tags: "Mobile, Web",
+            IsPublished: false);
 
     private static PageText English(PageKey key) => key switch
     {
