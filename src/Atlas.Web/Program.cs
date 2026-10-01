@@ -1,7 +1,9 @@
 using Atlas.Application;
+using Atlas.Application.Abstractions;
 using Atlas.Infrastructure;
 using Atlas.Web;
 using Atlas.Web.Branding;
+using Atlas.Web.Chat;
 using Atlas.Web.Components;
 using Atlas.Web.Components.Account;
 using Atlas.Web.Hosting;
@@ -61,6 +63,9 @@ builder.Services.Configure<WebEncoderOptions>(options =>
     options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
 
 builder.Services.AddMudServices();
+// Register the real-time chat notifier before AddApplication so it replaces the no-op default.
+builder.Services.AddSingleton<ChatNotifier>();
+builder.Services.AddSingleton<IChatNotifier>(sp => sp.GetRequiredService<ChatNotifier>());
 builder.Services.AddApplication();
 builder.Services.AddInfrastructure(builder.Configuration);
 builder.Services.AddSingleton<UseCases>();

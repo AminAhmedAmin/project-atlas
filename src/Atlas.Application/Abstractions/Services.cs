@@ -14,3 +14,9 @@ public interface IEmailSender
 {
     Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default);
 }
+
+/// <summary>Tells connected dashboards and visitor chat windows that a conversation changed.</summary>
+public interface IChatNotifier
+{
+    void ConversationChanged(Guid conversationId);
+}

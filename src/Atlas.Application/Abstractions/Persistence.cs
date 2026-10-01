@@ -1,5 +1,6 @@
 using Atlas.Application.Common;
 using Atlas.Domain.Common;
+using Atlas.Domain.Chat;
 using Atlas.Domain.Contact;
 using Atlas.Domain.Portfolio;
 using Atlas.Domain.Content;
@@ -66,6 +67,22 @@ public interface ICaseStudyRepository
     void Add(CaseStudy caseStudy);
 
     void Remove(CaseStudy caseStudy);
+}
+
+public interface IChatRepository
+{
+    /// <summary>The conversation with all its messages (tracked, for changes).</summary>
+    Task<ChatConversation?> GetAsync(Guid id, CancellationToken cancellationToken = default);
+
+    /// <summary>Most recently active conversations first, with their messages.</summary>
+    Task<IReadOnlyList<ChatConversation>> ListAsync(bool includeClosed, int take, CancellationToken cancellationToken = default);
+
+    /// <summary>Open conversations with unread visitor messages.</summary>
+    Task<int> CountUnreadAsync(CancellationToken cancellationToken = default);
+
+    void Add(ChatConversation conversation);
+
+    void Remove(ChatConversation conversation);
 }
 
 public sealed record ContactMessageSearch(string? Text, bool UnreadOnly, int Page, int PageSize);

@@ -140,3 +140,28 @@ internal sealed class InMemoryCaseStudyRepository : ICaseStudyRepository
 
     public void Remove(Domain.Portfolio.CaseStudy caseStudy) => Studies.Remove(caseStudy);
 }
+
+internal sealed class InMemoryChatRepository : IChatRepository
+{
+    public List<Domain.Chat.ChatConversation> Conversations { get; } = [];
+
+    public Task<Domain.Chat.ChatConversation?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Conversations.FirstOrDefault(c => c.Id == id));
+
+    public Task<IReadOnlyList<Domain.Chat.ChatConversation>> ListAsync(bool includeClosed, int take, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Domain.Chat.ChatConversation>>(Conversations.Where(c => includeClosed || !c.IsClosed).Take(take).ToList());
+
+    public Task<int> CountUnreadAsync(CancellationToken cancellationToken = default) =>
+        Task.FromResult(Conversations.Count(c => !c.IsClosed && c.UnreadByAgent > 0));
+
+    public void Add(Domain.Chat.ChatConversation conversation) => Conversations.Add(conversation);
+
+    public void Remove(Domain.Chat.ChatConversation conversation) => Conversations.Remove(conversation);
+}
+
+internal sealed class RecordingChatNotifier : IChatNotifier
+{
+    public List<Guid> Notifications { get; } = [];
+
+    public void ConversationChanged(Guid conversationId) => Notifications.Add(conversationId);
+}

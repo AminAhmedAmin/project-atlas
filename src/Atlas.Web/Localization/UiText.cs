@@ -89,6 +89,25 @@ public static class UiText
         ["Have a project in mind?"] = "لديك فكرة مشروع؟",
         ["Tell us about it and get a free estimate."] = "أخبرنا عنها واحصل على تقدير مجاني.",
 
+        // Live chat
+        ["Chat with us"] = "تحدث معنا",
+        ["Open chat"] = "فتح المحادثة",
+        ["Close chat"] = "إغلاق المحادثة",
+        ["Hi! How can we help you today?"] = "مرحبًا! كيف يمكننا مساعدتك اليوم؟",
+        ["We'll reply here as soon as we can."] = "سنرد عليك هنا في أقرب وقت ممكن.",
+        ["Your name"] = "اسمك",
+        ["E-mail or phone (optional)"] = "البريد الإلكتروني أو الجوال (اختياري)",
+        ["So we can reach you if you leave the page."] = "لنتمكن من التواصل معك إذا غادرت الصفحة.",
+        ["Your message"] = "رسالتك",
+        ["Start chat"] = "ابدأ المحادثة",
+        ["Type a message…"] = "اكتب رسالتك…",
+        ["Send"] = "إرسال",
+        ["You"] = "أنت",
+        ["This chat was closed. Send a message to reopen it."] = "تم إغلاق هذه المحادثة. أرسل رسالة لإعادة فتحها.",
+        ["You're sending messages too quickly. Please wait a moment."] = "ترسل الرسائل بسرعة كبيرة. يرجى الانتظار قليلًا.",
+        ["Please enter your name and a message."] = "يرجى إدخال اسمك ورسالتك.",
+        ["New message"] = "رسالة جديدة",
+
         // WhatsApp
         ["Chat on WhatsApp"] = "تواصل عبر واتساب",
         ["Prefer WhatsApp?"] = "تفضّل واتساب؟",

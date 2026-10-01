@@ -33,6 +33,15 @@ public static class DependencyInjection
         }
 
         services.TryAddSingleton(TimeProvider.System);
+        services.TryAddSingleton<IChatNotifier, NullChatNotifier>();
         return services;
+    }
+}
+
+/// <summary>Default notifier for hosts without real-time UI (tests, tools).</summary>
+internal sealed class NullChatNotifier : IChatNotifier
+{
+    public void ConversationChanged(Guid conversationId)
+    {
     }
 }

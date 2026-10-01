@@ -32,6 +32,11 @@ work" steps, testimonials, FAQ and call to action), Services, About and Contact.
   the contact e-mail (if set) is notified.
 - **Portfolio** at `/work` (and `/ar/work`): case studies with cover image, client, tags, results
   and story. Featured ones appear on the home page; the menu link appears once one is published.
+- **Live chat**: a chat bubble on every page (English and Arabic). Visitors leave their name, an
+  optional e-mail or phone and a message; the team replies from **/admin/chat** and replies appear
+  instantly. Conversations survive page reloads (an unguessable token is kept in the browser), and
+  visitors are rate-limited. New chats show a badge and a notification in the dashboard and are
+  e-mailed to the contact address.
 - A floating **WhatsApp** button appears on every page once a WhatsApp number is set in
   **/admin/settings** (Saudi numbers like `05x xxx xxxx` are converted to `9665…` automatically).
 - **English and Arabic.** English pages live at `/…` and Arabic pages at `/ar/…`, with a
@@ -58,6 +63,8 @@ work" steps, testimonials, FAQ and call to action), Services, About and Contact.
   apply to every open page immediately.
 - **Portfolio**: create case studies per language with cover upload; mark them published and
   featured. A hidden sample shows the format.
+- **Live chat**: conversation list with unread counts, real-time thread, reply, close and delete;
+  phone contacts get a one-click WhatsApp link.
 - **Users**: list users, create users, and grant or revoke the Admin role. You can't remove your
   own Admin role, and the last admin can't be demoted.
 - Sidebar navigation, dark/light mode toggle (remembered per browser) and a responsive layout.
@@ -281,7 +288,10 @@ A typical setup is **Azure App Service (Linux, container or code)** plus **Azure
    `FileStorage:RootPath` and `DataProtection:KeysPath` to a persistent path such as
    `/home/data/...`. For several instances, consider implementing `IFileStorage` with Azure Blob
    Storage and storing Data Protection keys in Blob Storage/Key Vault.
-7. Replace `LoggingEmailSender` with a real `IEmailSender` (e.g. Azure Communication Services or
+7. Live chat pushes updates through the server's memory, which suits one instance. If you scale
+   out to several instances, add a backplane (e.g. Azure SignalR Service or Redis) for
+   `ChatNotifier`.
+8. Replace `LoggingEmailSender` with a real `IEmailSender` (e.g. Azure Communication Services or
    SMTP) if you want notification e-mails to be sent.
 
 ## Health checks and logging

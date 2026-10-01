@@ -1,4 +1,5 @@
 using Atlas.Application.Abstractions;
+using Atlas.Domain.Chat;
 using Atlas.Domain.Contact;
 using Atlas.Domain.Content;
 using Atlas.Domain.Portfolio;
@@ -23,6 +24,8 @@ public sealed class AtlasDbContext(DbContextOptions<AtlasDbContext> options)
     public DbSet<ContentBlock> ContentBlocks => Set<ContentBlock>();
 
     public DbSet<CaseStudy> CaseStudies => Set<CaseStudy>();
+
+    public DbSet<ChatConversation> ChatConversations => Set<ChatConversation>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

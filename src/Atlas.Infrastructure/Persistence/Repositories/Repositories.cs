@@ -1,6 +1,7 @@
 using Atlas.Application.Abstractions;
 using Atlas.Application.Common;
 using Atlas.Domain.Common;
+using Atlas.Domain.Chat;
 using Atlas.Domain.Contact;
 using Atlas.Domain.Content;
 using Atlas.Domain.Portfolio;
@@ -120,6 +121,35 @@ internal sealed class CaseStudyRepository(AtlasDbContext db) : ICaseStudyReposit
     public void Add(CaseStudy caseStudy) => db.CaseStudies.Add(caseStudy);
 
     public void Remove(CaseStudy caseStudy) => db.CaseStudies.Remove(caseStudy);
+}
+
+internal sealed class ChatRepository(AtlasDbContext db) : IChatRepository
+{
+    public Task<ChatConversation?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.ChatConversations.Include(c => c.Messages).FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<ChatConversation>> ListAsync(bool includeClosed, int take, CancellationToken cancellationToken = default)
+    {
+        var query = db.ChatConversations.AsNoTracking();
+        if (!includeClosed)
+        {
+            query = query.Where(c => !c.IsClosed);
+        }
+
+        return await query
+            .OrderByDescending(c => c.LastMessageAtUtc)
+            .Take(take)
+            .Include(c => c.Messages)
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<int> CountUnreadAsync(CancellationToken cancellationToken = default) =>
+        db.ChatConversations.CountAsync(c => !c.IsClosed && c.UnreadByAgent > 0, cancellationToken);
+
+    public void Add(ChatConversation conversation) => db.ChatConversations.Add(conversation);
+
+    public void Remove(ChatConversation conversation) => db.ChatConversations.Remove(conversation);
 }
 
 internal sealed class ContactMessageRepository(AtlasDbContext db) : IContactMessageRepository

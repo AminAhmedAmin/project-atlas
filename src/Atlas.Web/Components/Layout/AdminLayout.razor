@@ -4,6 +4,8 @@
 @inject UseCases UseCases
 @inject NavigationManager Navigation
 @inject IJSRuntime JS
+@inject Atlas.Web.Chat.ChatNotifier ChatNotifier
+@inject ISnackbar Snackbar
 
 <MudThemeProvider @ref="_themeProvider" Theme="_theme" @bind-IsDarkMode="_isDarkMode" />
 <MudPopoverProvider />
@@ -55,6 +57,15 @@
                     }
                 </div>
             </MudNavLink>
+            <MudNavLink Href="/admin/chat" Icon="@Icons.Material.Outlined.Forum">
+                <div class="d-flex align-center justify-space-between">
+                    <span>Live chat</span>
+                    @if (_unreadChats > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Error" Class="ma-0">@_unreadChats</MudChip>
+                    }
+                </div>
+            </MudNavLink>
             <MudText Typo="Typo.overline" Class="px-4 mt-4 text-secondary">Content</MudText>
             <MudNavLink Href="/admin/content" Icon="@Icons.Material.Outlined.Article">Pages</MudNavLink>
             <MudNavLink Href="/admin/home-sections" Icon="@Icons.Material.Outlined.ViewQuilt">Home page</MudNavLink>
@@ -88,12 +99,14 @@
     private bool _isDarkMode;
     private bool _drawerOpen = true;
     private int _unread;
+    private int _unreadChats;
 
     protected override async Task OnInitializedAsync()
     {
         ApplyBranding(await Branding.GetAsync());
         Branding.Changed += OnBrandingChanged;
         Navigation.LocationChanged += OnLocationChanged;
+        ChatNotifier.Changed += OnChatChanged;
         await RefreshUnreadAsync();
     }
 
@@ -119,6 +132,7 @@
     {
         var stats = await UseCases.QueryAsync<GetDashboardStatsQuery, DashboardStatsDto>(new(Days: 1));
         _unread = stats.UnreadMessages;
+        _unreadChats = await UseCases.QueryAsync<Atlas.Application.Chat.GetUnreadChatCountQuery, int>(new());
     }
 
     private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(async () =>
@@ -139,8 +153,32 @@
         _theme = ThemeFactory.Create(settings.PrimaryColor);
     }
 
+    private void OnChatChanged(Guid conversationId) => _ = InvokeAsync(async () =>
+    {
+        var before = _unreadChats;
+        await RefreshUnreadAsync();
+
+        // Let admins know about new chats while they work on other pages.
+        var onChatPage = Navigation.ToBaseRelativePath(Navigation.Uri).StartsWith("admin/chat", StringComparison.OrdinalIgnoreCase);
+        if (_unreadChats > before && !onChatPage)
+        {
+            Snackbar.Add("New live chat message", Severity.Info, options =>
+            {
+                options.Action = "Open";
+                options.OnClick = _ =>
+                {
+                    Navigation.NavigateTo("/admin/chat");
+                    return Task.CompletedTask;
+                };
+            });
+        }
+
+        StateHasChanged();
+    });
+
     public void Dispose()
     {
+        ChatNotifier.Changed -= OnChatChanged;
         Branding.Changed -= OnBrandingChanged;
         Navigation.LocationChanged -= OnLocationChanged;
     }
