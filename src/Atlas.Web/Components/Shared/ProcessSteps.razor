@@ -1,0 +1,27 @@
+@inherits PublicComponentBase
+
+@if (Items.Count > 0)
+{
+    <section class="section section-alt">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <SectionHeading Eyebrow="@L("How we work")" Title="@L("From idea to launch, step by step")" Lead="@Lead" Centered="true" />
+            <ol class="process">
+                @for (var i = 0; i < Items.Count; i++)
+                {
+                    var step = Items[i];
+                    <li class="process-step">
+                        <div class="process-number">@(i + 1)</div>
+                        <MudText Typo="Typo.h6" HtmlTag="h3" Class="mt-4 mb-2">@step.Title</MudText>
+                        <MudText Typo="Typo.body2" Class="text-secondary">@step.Text</MudText>
+                    </li>
+                }
+            </ol>
+        </MudContainer>
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public IReadOnlyList<ContentBlockDto> Items { get; set; } = [];
+
+    [Parameter] public string? Lead { get; set; }
+}

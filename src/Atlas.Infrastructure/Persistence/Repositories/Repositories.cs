@@ -1,0 +1,206 @@
+using Atlas.Application.Abstractions;
+using Atlas.Application.Common;
+using Atlas.Domain.Common;
+using Atlas.Domain.Chat;
+using Atlas.Domain.Contact;
+using Atlas.Domain.Content;
+using Atlas.Domain.Portfolio;
+using Atlas.Domain.Settings;
+using Microsoft.EntityFrameworkCore;
+
+namespace Atlas.Infrastructure.Persistence.Repositories;
+
+internal sealed class SiteSettingsRepository(AtlasDbContext db) : ISiteSettingsRepository
+{
+    public Task<SiteSettings?> GetAsync(CancellationToken cancellationToken = default) =>
+        db.SiteSettings.OrderBy(s => s.Id).FirstOrDefaultAsync(cancellationToken);
+
+    public void Add(SiteSettings settings) => db.SiteSettings.Add(settings);
+}
+
+internal sealed class PageContentRepository(AtlasDbContext db) : IPageContentRepository
+{
+    public Task<PageContent?> GetAsync(PageKey key, SiteLanguage language, CancellationToken cancellationToken = default) =>
+        db.PageContents.FirstOrDefaultAsync(p => p.Key == key && p.Language == language, cancellationToken);
+
+    public void Add(PageContent page) => db.PageContents.Add(page);
+}
+
+internal sealed class ServiceRepository(AtlasDbContext db) : IServiceRepository
+{
+    public Task<Service?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.Services.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<Service>> ListAsync(SiteLanguage? language, bool publishedOnly, CancellationToken cancellationToken = default)
+    {
+        var query = db.Services.AsNoTracking();
+        if (language is { } lang)
+        {
+            query = query.Where(s => s.Language == lang);
+        }
+
+        if (publishedOnly)
+        {
+            query = query.Where(s => s.IsPublished);
+        }
+
+        return await query.OrderBy(s => s.DisplayOrder).ToListAsync(cancellationToken);
+    }
+
+    public Task<int> CountAsync(CancellationToken cancellationToken = default) =>
+        db.Services.CountAsync(cancellationToken);
+
+    public void Add(Service service) => db.Services.Add(service);
+
+    public void Remove(Service service) => db.Services.Remove(service);
+}
+
+internal sealed class ContentBlockRepository(AtlasDbContext db) : IContentBlockRepository
+{
+    public Task<ContentBlock?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.ContentBlocks.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<ContentBlock>> ListAsync(SiteLanguage? language, BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default)
+    {
+        var query = db.ContentBlocks.AsNoTracking();
+        if (language is { } lang)
+        {
+            query = query.Where(b => b.Language == lang);
+        }
+
+        if (kind is { } k)
+        {
+            query = query.Where(b => b.Kind == k);
+        }
+
+        if (publishedOnly)
+        {
+            query = query.Where(b => b.IsPublished);
+        }
+
+        return await query.OrderBy(b => b.Kind).ThenBy(b => b.DisplayOrder).ToListAsync(cancellationToken);
+    }
+
+    public void Add(ContentBlock block) => db.ContentBlocks.Add(block);
+
+    public void Remove(ContentBlock block) => db.ContentBlocks.Remove(block);
+}
+
+internal sealed class CaseStudyRepository(AtlasDbContext db) : ICaseStudyRepository
+{
+    public Task<CaseStudy?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.CaseStudies.FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+    public Task<CaseStudy?> GetBySlugAsync(SiteLanguage language, string slug, CancellationToken cancellationToken = default) =>
+        db.CaseStudies.AsNoTracking().FirstOrDefaultAsync(c => c.Language == language && c.Slug == slug, cancellationToken);
+
+    public async Task<IReadOnlyList<CaseStudy>> ListAsync(SiteLanguage? language, bool publishedOnly, bool featuredOnly, CancellationToken cancellationToken = default)
+    {
+        var query = db.CaseStudies.AsNoTracking();
+        if (language is { } lang)
+        {
+            query = query.Where(c => c.Language == lang);
+        }
+
+        if (publishedOnly)
+        {
+            query = query.Where(c => c.IsPublished);
+        }
+
+        if (featuredOnly)
+        {
+            query = query.Where(c => c.IsFeatured);
+        }
+
+        return await query.OrderBy(c => c.DisplayOrder).ToListAsync(cancellationToken);
+    }
+
+    public Task<bool> SlugExistsAsync(SiteLanguage language, string slug, Guid? excludingId, CancellationToken cancellationToken = default) =>
+        db.CaseStudies.AnyAsync(c => c.Language == language && c.Slug == slug && c.Id != excludingId, cancellationToken);
+
+    public void Add(CaseStudy caseStudy) => db.CaseStudies.Add(caseStudy);
+
+    public void Remove(CaseStudy caseStudy) => db.CaseStudies.Remove(caseStudy);
+}
+
+internal sealed class ChatRepository(AtlasDbContext db) : IChatRepository
+{
+    public Task<ChatConversation?> GetAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.ChatConversations.Include(c => c.Messages).FirstOrDefaultAsync(c => c.Id == id, cancellationToken);
+
+    public async Task<IReadOnlyList<ChatConversation>> ListAsync(bool includeClosed, int take, CancellationToken cancellationToken = default)
+    {
+        var query = db.ChatConversations.AsNoTracking();
+        if (!includeClosed)
+        {
+            query = query.Where(c => !c.IsClosed);
+        }
+
+        return await query
+            .OrderByDescending(c => c.LastMessageAtUtc)
+            .Take(take)
+            .Include(c => c.Messages)
+            .AsSplitQuery()
+            .ToListAsync(cancellationToken);
+    }
+
+    public Task<int> CountUnreadAsync(CancellationToken cancellationToken = default) =>
+        db.ChatConversations.CountAsync(c => !c.IsClosed && c.UnreadByAgent > 0, cancellationToken);
+
+    public void Add(ChatConversation conversation) => db.ChatConversations.Add(conversation);
+
+    public void Remove(ChatConversation conversation) => db.ChatConversations.Remove(conversation);
+}
+
+internal sealed class ContactMessageRepository(AtlasDbContext db) : IContactMessageRepository
+{
+    public Task<ContactMessage?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
+        db.ContactMessages.FirstOrDefaultAsync(m => m.Id == id, cancellationToken);
+
+    public async Task<PagedResult<ContactMessage>> SearchAsync(ContactMessageSearch search, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(search);
+
+        var query = db.ContactMessages.AsNoTracking();
+        if (search.UnreadOnly)
+        {
+            query = query.Where(m => !m.IsRead);
+        }
+
+        if (!string.IsNullOrWhiteSpace(search.Text))
+        {
+            var text = search.Text;
+            query = query.Where(m =>
+                m.Name.Contains(text)
+                || m.Email.Value.Contains(text)
+                || (m.Phone != null && m.Phone.Contains(text))
+                || (m.Service != null && m.Service.Contains(text))
+                || (m.Subject != null && m.Subject.Contains(text))
+                || m.Message.Contains(text));
+        }
+
+        var total = await query.CountAsync(cancellationToken);
+        var items = await query
+            .OrderByDescending(m => m.ReceivedAtUtc)
+            .Skip((search.Page - 1) * search.PageSize)
+            .Take(search.PageSize)
+            .ToListAsync(cancellationToken);
+
+        return new PagedResult<ContactMessage>(items, total, search.Page, search.PageSize);
+    }
+
+    public Task<int> CountAsync(bool unreadOnly, CancellationToken cancellationToken = default) =>
+        unreadOnly
+            ? db.ContactMessages.CountAsync(m => !m.IsRead, cancellationToken)
+            : db.ContactMessages.CountAsync(cancellationToken);
+
+    public async Task<IReadOnlyList<DateTime>> GetReceivedTimesSinceAsync(DateTime fromUtc, CancellationToken cancellationToken = default) =>
+        await db.ContactMessages
+            .Where(m => m.ReceivedAtUtc >= fromUtc)
+            .Select(m => m.ReceivedAtUtc)
+            .ToListAsync(cancellationToken);
+
+    public void Add(ContactMessage message) => db.ContactMessages.Add(message);
+
+    public void Remove(ContactMessage message) => db.ContactMessages.Remove(message);
+}

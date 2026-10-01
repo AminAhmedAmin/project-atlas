@@ -1,0 +1,29 @@
+@{ var name = Settings.CompanyNameFor(Language); }
+<a href="@Href" class="brand-logo" aria-label="@name">
+    @if (!string.IsNullOrWhiteSpace(Settings.LogoUrl))
+    {
+        <img src="@Settings.LogoUrl" alt="@name" height="@Height" />
+    }
+    else
+    {
+        <span class="brand-mark" style="background:@Settings.PrimaryColor">@Initial(name)</span>
+    }
+    @if (ShowName)
+    {
+        <span class="brand-name">@name</span>
+    }
+</a>
+
+@code {
+    [Parameter, EditorRequired] public SiteSettingsDto Settings { get; set; } = default!;
+
+    [Parameter] public SiteLanguage Language { get; set; } = SiteLanguage.English;
+
+    [Parameter] public bool ShowName { get; set; } = true;
+
+    [Parameter] public int Height { get; set; } = 36;
+
+    [Parameter] public string Href { get; set; } = "/";
+
+    private static string Initial(string name) => string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
+}

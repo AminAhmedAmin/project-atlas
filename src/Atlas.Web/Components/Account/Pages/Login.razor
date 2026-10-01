@@ -1,0 +1,88 @@
+@page "/account/login"
+@using System.ComponentModel.DataAnnotations
+@inject SignInManager<ApplicationUser> SignInManager
+@inject ILogger<Login> Logger
+@inject NavigationManager Navigation
+
+<PageTitle>Sign in</PageTitle>
+<HeadContent><meta name="robots" content="noindex" /></HeadContent>
+
+<h1 class="account-title">Sign in</h1>
+<p class="account-subtitle">Use your admin account to access the dashboard.</p>
+
+@if (_errorMessage is not null)
+{
+    <div class="account-alert" role="alert">@_errorMessage</div>
+}
+
+<EditForm Model="Input" method="post" OnValidSubmit="LoginAsync" FormName="login" class="account-form">
+    <DataAnnotationsValidator />
+
+    <label for="email">E-mail</label>
+    <InputText id="email" @bind-Value="Input.Email" class="account-input" autocomplete="username" aria-required="true" />
+    <ValidationMessage For="() => Input.Email" class="account-validation" />
+
+    <label for="password">Password</label>
+    <InputText id="password" type="password" @bind-Value="Input.Password" class="account-input" autocomplete="current-password" aria-required="true" />
+    <ValidationMessage For="() => Input.Password" class="account-validation" />
+
+    <label class="account-checkbox">
+        <InputCheckbox @bind-Value="Input.RememberMe" />
+        Keep me signed in
+    </label>
+
+    <button type="submit" class="account-button">Sign in</button>
+</EditForm>
+
+<a href="/" class="account-back">&larr; Back to website</a>
+
+@code {
+    private string? _errorMessage;
+
+    [SupplyParameterFromForm]
+    private LoginInput Input { get; set; } = default!;
+
+    [SupplyParameterFromQuery]
+    private string? ReturnUrl { get; set; }
+
+    protected override void OnInitialized() => Input ??= new();
+
+    private async Task LoginAsync()
+    {
+        var result = await SignInManager.PasswordSignInAsync(Input.Email, Input.Password, Input.RememberMe, lockoutOnFailure: true);
+
+        if (result.Succeeded)
+        {
+            Logger.LogInformation("User {Email} signed in", Input.Email);
+            Navigation.NavigateTo(SafeReturnUrl(ReturnUrl));
+        }
+        else if (result.IsLockedOut)
+        {
+            Logger.LogWarning("User {Email} is locked out", Input.Email);
+            _errorMessage = "This account is temporarily locked after too many failed attempts. Try again later.";
+        }
+        else
+        {
+            _errorMessage = "Invalid e-mail or password.";
+        }
+    }
+
+    /// <summary>Only allow local paths to prevent open redirects.</summary>
+    private static string SafeReturnUrl(string? url) =>
+        !string.IsNullOrEmpty(url) && url.StartsWith('/') && !url.StartsWith("//", StringComparison.Ordinal) && !url.StartsWith("/\\", StringComparison.Ordinal)
+            ? url
+            : "/admin";
+
+    private sealed class LoginInput
+    {
+        [Required(ErrorMessage = "Enter your e-mail.")]
+        [EmailAddress(ErrorMessage = "Enter a valid e-mail.")]
+        public string Email { get; set; } = string.Empty;
+
+        [Required(ErrorMessage = "Enter your password.")]
+        [DataType(DataType.Password)]
+        public string Password { get; set; } = string.Empty;
+
+        public bool RememberMe { get; set; }
+    }
+}

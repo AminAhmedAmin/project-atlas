@@ -1,0 +1,25 @@
+@page "/admin/home-sections"
+
+<PageTitle>Home page | Admin</PageTitle>
+
+<AdminPageHeader Title="Home page sections" Description="Numbers, client logos, process steps, testimonials and FAQ shown on the home page. Empty or hidden sections are not shown.">
+    <Actions>
+        <LanguageSwitch @bind-Value="_language" />
+        <MudButton Href="@SiteLanguages.Localize("/", _language)" Target="_blank" Variant="Variant.Text" EndIcon="@Icons.Material.Outlined.OpenInNew">View home page</MudButton>
+    </Actions>
+</AdminPageHeader>
+
+<MudPaper Outlined="true" Elevation="0" @key="_language">
+    <MudTabs Elevation="0" ApplyEffectsToContainer="true" TabPanelsClass="pa-6" KeepPanelsAlive="true">
+        @foreach (var info in BlockKinds.All)
+        {
+            <MudTabPanel Text="@info.Tab">
+                <BlockList Kind="info.Kind" Language="_language" />
+            </MudTabPanel>
+        }
+    </MudTabs>
+</MudPaper>
+
+@code {
+    private SiteLanguage _language = SiteLanguage.English;
+}

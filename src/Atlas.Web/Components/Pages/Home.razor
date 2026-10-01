@@ -1,0 +1,139 @@
+@page "/"
+@page "/ar"
+@inherits PublicComponentBase
+@inject BrandingService Branding
+@inject UseCases UseCases
+
+@if (Settings is not null && Page is not null && Services is not null && Blocks is not null)
+{
+    <SeoHead CompanyName="@CompanyNameOf(Settings, Lang)" Tagline="@Settings.TaglineFor(Lang)" Description="@Page.MetaDescription" />
+
+    <section class="hero">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            <div class="hero-grid">
+                <div class="hero-content">
+                    <MudText Typo="Typo.h2" HtmlTag="h1" Class="hero-title">@Render(Page.Title)</MudText>
+                    @if (!string.IsNullOrWhiteSpace(Page.Subtitle))
+                    {
+                        <MudText Typo="Typo.h6" HtmlTag="p" Class="hero-subtitle">@Render(Page.Subtitle)</MudText>
+                    }
+                    <div class="hero-actions">
+                        @if (!string.IsNullOrWhiteSpace(Page.CallToActionText) && !string.IsNullOrWhiteSpace(Page.CallToActionUrl))
+                        {
+                            <MudButton Href="@Page.CallToActionUrl" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
+                                       EndIcon="@ForwardIcon" DropShadow="false">
+                                @Page.CallToActionText
+                            </MudButton>
+                        }
+                        @if (Services.Count > 0)
+                        {
+                            <MudButton Href="@Href("/services")" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large">
+                                @L("Explore services")
+                            </MudButton>
+                        }
+                    </div>
+                </div>
+                <div class="hero-visual" aria-hidden="true">
+                    <HeroIllustration AriaLabel="@L("A web application and a mobile app")" />
+                </div>
+            </div>
+        </MudContainer>
+    </section>
+
+    <StatsBand Items="@Of(BlockKind.Stat)" />
+
+    <ClientLogos Items="@Of(BlockKind.ClientLogo)" />
+
+    @if (Services.Count > 0)
+    {
+        <section class="section">
+            <MudContainer MaxWidth="MaxWidth.Large">
+                <SectionHeading Eyebrow="@L("What we do")" Title="@L("Services")" />
+                <div class="card-grid">
+                    @foreach (var service in Services.Take(6))
+                    {
+                        <ServiceCard Service="service" CompanyName="@CompanyNameOf(Settings, Lang)" />
+                    }
+                </div>
+                @if (Services.Count > 6)
+                {
+                    <div class="d-flex justify-center mt-8">
+                        <MudButton Href="@Href("/services")" Variant="Variant.Text" Color="Color.Primary" EndIcon="@ForwardIcon">
+                            @L("View all services")
+                        </MudButton>
+                    </div>
+                }
+            </MudContainer>
+        </section>
+    }
+
+    @if (Featured is { Count: > 0 })
+    {
+        <section class="section">
+            <MudContainer MaxWidth="MaxWidth.Large">
+                <div class="d-flex flex-wrap align-end justify-space-between gap-4">
+                    <SectionHeading Eyebrow="@L("Our work")" Title="@L("Projects we're proud of")" />
+                    <MudButton Href="@Href("/work")" Variant="Variant.Text" Color="Color.Primary" EndIcon="@ForwardIcon" Class="mb-10">@L("View all work")</MudButton>
+                </div>
+                <div class="case-grid">
+                    @foreach (var study in Featured.Take(3))
+                    {
+                        <CaseStudyCard Study="study" />
+                    }
+                </div>
+            </MudContainer>
+        </section>
+    }
+
+    <ProcessSteps Items="@Of(BlockKind.ProcessStep)" Lead="@Render(Page.Body)" />
+
+    <Testimonials Items="@Of(BlockKind.Testimonial)" />
+
+    <FaqSection Items="@Of(BlockKind.Faq)" />
+
+    @if (Contact is not null)
+    {
+        <section class="cta-band">
+            <MudContainer MaxWidth="MaxWidth.Medium" Class="text-center">
+                <MudText Typo="Typo.h4" HtmlTag="h2" Class="mb-3">@Render(Contact.Title)</MudText>
+                @if (!string.IsNullOrWhiteSpace(Contact.Subtitle))
+                {
+                    <MudText Typo="Typo.body1" Class="mb-6">@Render(Contact.Subtitle)</MudText>
+                }
+                <MudButton Href="@Href("/contact")" Variant="Variant.Filled" Size="Size.Large" Class="cta-band-button" DropShadow="false">
+                    @L("Contact us")
+                </MudButton>
+            </MudContainer>
+        </section>
+    }
+}
+
+@code {
+    [PersistentState] public SiteSettingsDto? Settings { get; set; }
+
+    [PersistentState] public PageContentDto? Page { get; set; }
+
+    [PersistentState] public PageContentDto? Contact { get; set; }
+
+    [PersistentState] public List<ServiceDto>? Services { get; set; }
+
+    [PersistentState] public List<ContentBlockDto>? Blocks { get; set; }
+
+    [PersistentState] public List<Atlas.Application.Portfolio.CaseStudyDto>? Featured { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Settings ??= await Branding.GetAsync();
+        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Home, Lang));
+        Contact ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact, Lang));
+        Services ??= (await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: true, Lang))).ToList();
+        Blocks ??= (await UseCases.QueryAsync<GetContentBlocksQuery, IReadOnlyList<ContentBlockDto>>(new(null, PublishedOnly: true, Lang))).ToList();
+        Featured ??= (await UseCases.QueryAsync<Atlas.Application.Portfolio.GetCaseStudiesQuery, IReadOnlyList<Atlas.Application.Portfolio.CaseStudyDto>>(
+            new(Lang, PublishedOnly: true, FeaturedOnly: true))).ToList();
+    }
+
+    private IReadOnlyList<ContentBlockDto> Of(BlockKind kind) =>
+        Blocks?.Where(b => b.Kind == kind).ToList() ?? [];
+
+    private string Render(string? text) => ContentText.Render(text, CompanyNameOf(Settings, Lang));
+}

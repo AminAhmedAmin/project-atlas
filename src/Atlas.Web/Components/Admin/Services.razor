@@ -1,0 +1,109 @@
+@page "/admin/services"
+@inject UseCases UseCases
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Services | Admin</PageTitle>
+
+<AdminPageHeader Title="Services" Description="Services and products shown on the website, in display order. Each language has its own list.">
+    <Actions>
+        <LanguageSwitch Value="_language" ValueChanged="ChangeLanguageAsync" />
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" StartIcon="@Icons.Material.Filled.Add" OnClick="() => EditAsync(null)">
+            Add service
+        </MudButton>
+    </Actions>
+</AdminPageHeader>
+
+<MudPaper Outlined="true" Elevation="0">
+    <MudTable T="ServiceDto" Items="_services" Hover="true" Elevation="0" Loading="_loading"
+              OnRowClick="@((TableRowClickEventArgs<ServiceDto> e) => e.Item is null ? Task.CompletedTask : EditAsync(e.Item))" RowClass="cursor-pointer">
+        <HeaderContent>
+            <MudTh Style="width:70px">Order</MudTh>
+            <MudTh>Service</MudTh>
+            <MudTh Style="width:130px">Status</MudTh>
+            <MudTh Style="width:110px"></MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="Order">@context.DisplayOrder</MudTd>
+            <MudTd DataLabel="Service">
+                <div class="d-flex align-center gap-3">
+                    <div class="service-icon service-icon-sm"><MudIcon Icon="@ServiceIcons.For(context.Icon)" Color="Color.Primary" Size="Size.Small" /></div>
+                    <div>
+                        <div class="message-from">@context.Title</div>
+                        <MudText Typo="Typo.caption" Class="text-secondary">@context.Summary</MudText>
+                    </div>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsPublished)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Published</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Variant="Variant.Text">Hidden</MudChip>
+                }
+            </MudTd>
+            <MudTd>
+                <div class="d-flex justify-end" @onclick:stopPropagation="true">
+                    <MudIconButton Size="Size.Small" Icon="@Icons.Material.Outlined.Edit" OnClick="() => EditAsync(context)" aria-label="Edit" />
+                    <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Outlined.Delete" OnClick="() => DeleteAsync(context)" aria-label="Delete" />
+                </div>
+            </MudTd>
+        </RowTemplate>
+        <NoRecordsContent>
+            <MudText Typo="Typo.body2" Class="pa-6 text-secondary">No services yet. Add your first one.</MudText>
+        </NoRecordsContent>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private IReadOnlyList<ServiceDto> _services = [];
+    private SiteLanguage _language = SiteLanguage.English;
+    private bool _loading = true;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _services = await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: false, _language));
+        _loading = false;
+    }
+
+    private async Task EditAsync(ServiceDto? service)
+    {
+        var parameters = new DialogParameters<ServiceDialog>
+        {
+            { d => d.Service, service },
+            { d => d.Language, _language },
+            { d => d.NextDisplayOrder, _services.Count == 0 ? 0 : _services.Max(s => s.DisplayOrder) + 1 },
+        };
+        var dialog = await Dialogs.ShowAsync<ServiceDialog>(null, parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("Service saved.", Severity.Success);
+            await LoadAsync();
+        }
+    }
+
+    private async Task ChangeLanguageAsync(SiteLanguage language)
+    {
+        _language = language;
+        await LoadAsync();
+    }
+
+    private async Task DeleteAsync(ServiceDto service)
+    {
+        var confirmed = await Dialogs.ShowMessageBoxAsync("Delete service", $"Delete \"{service.Title}\"? This cannot be undone.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed != true)
+        {
+            return;
+        }
+
+        var result = await UseCases.SendAsync(new DeleteServiceCommand(service.Id));
+        Snackbar.Add(result.IsSuccess ? "Service deleted." : result.ErrorMessage, result.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadAsync();
+    }
+}

@@ -1,0 +1,14 @@
+@page "/not-found"
+@layout PublicLayout
+@inherits PublicComponentBase
+
+<PageTitle>@L("Page not found")</PageTitle>
+<HeadContent><meta name="robots" content="noindex" /></HeadContent>
+
+<section class="section">
+    <MudContainer MaxWidth="MaxWidth.Small" Class="text-center py-16">
+        <MudText Typo="Typo.h2" HtmlTag="h1" Color="Color.Primary">404</MudText>
+        <MudText Typo="Typo.h5" Class="mt-2 mb-6">@L("Sorry, we couldn't find that page.")</MudText>
+        <MudButton Href="@Href("/")" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false">@L("Back to home")</MudButton>
+    </MudContainer>
+</section>

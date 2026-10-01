@@ -1,0 +1,96 @@
+@page "/admin/users"
+@inject UseCases UseCases
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Users | Admin</PageTitle>
+
+<AdminPageHeader Title="Users" Description="People who can sign in. Only users with the Admin role can open the dashboard.">
+    <Actions>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" StartIcon="@Icons.Material.Filled.PersonAdd" OnClick="CreateAsync">
+            Add user
+        </MudButton>
+    </Actions>
+</AdminPageHeader>
+
+<MudPaper Outlined="true" Elevation="0">
+    <MudTable T="UserDto" Items="_users" Hover="true" Elevation="0" Loading="_loading">
+        <HeaderContent>
+            <MudTh>User</MudTh>
+            <MudTh Style="width:140px">Status</MudTh>
+            <MudTh Style="width:160px">Admin</MudTh>
+        </HeaderContent>
+        <RowTemplate>
+            <MudTd DataLabel="User">
+                <div class="d-flex align-center gap-3">
+                    <MudAvatar Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">@context.Email[..1].ToUpperInvariant()</MudAvatar>
+                    <div>
+                        <div class="message-from">@context.Email</div>
+                        @if (context.Id == _currentUserId)
+                        {
+                            <MudText Typo="Typo.caption" Class="text-secondary">You</MudText>
+                        }
+                    </div>
+                </div>
+            </MudTd>
+            <MudTd DataLabel="Status">
+                @if (context.IsLockedOut)
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Text">Locked out</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text">Active</MudChip>
+                }
+            </MudTd>
+            <MudTd DataLabel="Admin">
+                <MudTooltip Text="@(context.Id == _currentUserId ? "You cannot remove your own Admin role" : string.Empty)">
+                    <MudSwitch T="bool" Value="context.IsAdmin" ValueChanged="value => SetAdminAsync(context, value)" Color="Color.Primary"
+                               Disabled="@(context.Id == _currentUserId)" Label="@(context.IsAdmin ? "Admin" : "No")" />
+                </MudTooltip>
+            </MudTd>
+        </RowTemplate>
+    </MudTable>
+</MudPaper>
+
+@code {
+    private IReadOnlyList<UserDto> _users = [];
+    private bool _loading = true;
+    private string _currentUserId = string.Empty;
+
+    [CascadingParameter] private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        var state = await AuthenticationState;
+        _currentUserId = state.User.FindFirstValue(ClaimTypes.NameIdentifier) ?? string.Empty;
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        _loading = true;
+        _users = await UseCases.QueryAsync<GetUsersQuery, IReadOnlyList<UserDto>>(new());
+        _loading = false;
+    }
+
+    private async Task SetAdminAsync(UserDto user, bool isAdmin)
+    {
+        var result = await UseCases.SendAsync(new SetAdminRoleCommand(user.Id, isAdmin, _currentUserId));
+        Snackbar.Add(
+            result.IsSuccess ? (isAdmin ? $"{user.Email} is now an admin." : $"{user.Email} is no longer an admin.") : result.ErrorMessage,
+            result.IsSuccess ? Severity.Success : Severity.Error);
+        await LoadAsync();
+    }
+
+    private async Task CreateAsync()
+    {
+        var dialog = await Dialogs.ShowAsync<CreateUserDialog>(title: null, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+        if (result is { Canceled: false })
+        {
+            Snackbar.Add("User created.", Severity.Success);
+            await LoadAsync();
+        }
+    }
+}

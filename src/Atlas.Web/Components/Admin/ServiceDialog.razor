@@ -1,0 +1,117 @@
+@inject UseCases UseCases
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Service is null ? "Add service" : "Edit service") (@Language)</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="3" dir="@SiteLanguages.Direction(Language)">
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="_model.Title" Label="Title" Variant="Variant.Outlined" Required="true" MaxLength="Atlas.Domain.Content.Service.TitleMaxLength"
+                              Error="_errors.Has(nameof(_model.Title))" ErrorText="@_errors.For(nameof(_model.Title))" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField T="int" @bind-Value="_model.DisplayOrder" Label="Order" Variant="Variant.Outlined" Min="0"
+                                 Error="_errors.Has(nameof(_model.DisplayOrder))" ErrorText="@_errors.For(nameof(_model.DisplayOrder))" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_model.Summary" Label="Summary" Variant="Variant.Outlined" Required="true" Lines="2"
+                              HelperText="One or two sentences shown on the home page."
+                              MaxLength="Atlas.Domain.Content.Service.SummaryMaxLength" Counter="Atlas.Domain.Content.Service.SummaryMaxLength"
+                              Error="_errors.Has(nameof(_model.Summary))" ErrorText="@_errors.For(nameof(_model.Summary))" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_model.Description" Label="Description (optional)" Variant="Variant.Outlined" Lines="5" Sizing="InputSizing.Auto"
+                              HelperText="Shown on the Services page. Separate paragraphs with a blank line."
+                              MaxLength="Atlas.Domain.Content.Service.DescriptionMaxLength"
+                              Error="_errors.Has(nameof(_model.Description))" ErrorText="@_errors.For(nameof(_model.Description))" />
+            </MudItem>
+            <MudItem xs="12" sm="6">
+                <MudSelect T="string" @bind-Value="_model.Icon" Label="Icon" Variant="Variant.Outlined" Clearable="true">
+                    @foreach (var (key, icon) in ServiceIcons.All)
+                    {
+                        <MudSelectItem T="string" Value="key">
+                            <div class="d-flex align-center gap-2"><MudIcon Icon="@icon" Size="Size.Small" /> @key</div>
+                        </MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" Class="d-flex align-center">
+                <MudSwitch T="bool" @bind-Value="_model.IsPublished" Color="Color.Primary" Label="Published on website" />
+            </MudItem>
+            @if (_errors.General is not null)
+            {
+                <MudItem xs="12"><MudAlert Severity="Severity.Error" Dense="true">@_errors.General</MudAlert></MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" DropShadow="false" Disabled="_saving" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private ServiceModel _model = new();
+    private readonly FieldErrors _errors = new();
+    private bool _saving;
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    /// <summary>The service to edit, or null to create a new one.</summary>
+    [Parameter] public ServiceDto? Service { get; set; }
+
+    [Parameter] public int NextDisplayOrder { get; set; }
+
+    [Parameter] public SiteLanguage Language { get; set; } = SiteLanguage.English;
+
+    protected override void OnInitialized()
+    {
+        _model = Service is null
+            ? new ServiceModel { DisplayOrder = NextDisplayOrder, IsPublished = true }
+            : new ServiceModel
+            {
+                Title = Service.Title,
+                Summary = Service.Summary,
+                Description = Service.Description,
+                Icon = Service.Icon,
+                DisplayOrder = Service.DisplayOrder,
+                IsPublished = Service.IsPublished,
+            };
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            var result = await UseCases.SendAsync<SaveServiceCommand, ServiceDto>(new(
+                Service?.Id, _model.Title, _model.Summary, _model.Description, _model.Icon, _model.DisplayOrder, _model.IsPublished, Language));
+
+            _errors.Set(result);
+            if (result.IsSuccess)
+            {
+                Dialog.Close(DialogResult.Ok(result.Value));
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class ServiceModel
+    {
+        public string Title { get; set; } = string.Empty;
+
+        public string Summary { get; set; } = string.Empty;
+
+        public string? Description { get; set; }
+
+        public string? Icon { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsPublished { get; set; }
+    }
+}

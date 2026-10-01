@@ -1,0 +1,229 @@
+@page "/admin/chat"
+@using Atlas.Application.Chat
+@using Atlas.Domain.Chat
+@using Atlas.Web.Chat
+@implements IDisposable
+@inject UseCases UseCases
+@inject ChatNotifier Notifier
+@inject IDialogService Dialogs
+@inject ISnackbar Snackbar
+
+<PageTitle>Live chat | Admin</PageTitle>
+
+<AdminPageHeader Title="Live chat" Description="Conversations from the chat bubble on the website. Replies appear instantly in the visitor's window.">
+    <Actions>
+        <MudSwitch T="bool" Value="_includeClosed" ValueChanged="ToggleClosedAsync" Color="Color.Primary" Label="Show closed" />
+    </Actions>
+</AdminPageHeader>
+
+<div class="chat-admin">
+    <MudPaper Outlined="true" Elevation="0" Class="chat-admin-list">
+        @if (_conversations.Count == 0)
+        {
+            <MudText Typo="Typo.body2" Class="pa-6 text-secondary">No conversations yet. When a visitor starts a chat it appears here.</MudText>
+        }
+        @foreach (var conversation in _conversations)
+        {
+            <button type="button" class="chat-admin-item @(conversation.Id == _selectedId ? "selected" : "")" @onclick="() => SelectAsync(conversation.Id)">
+                <div class="d-flex align-center justify-space-between gap-2">
+                    <span class="message-from text-truncate">@conversation.VisitorName</span>
+                    <MudText Typo="Typo.caption" Class="text-secondary text-nowrap">@conversation.LastMessageAtUtc.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture)</MudText>
+                </div>
+                <div class="d-flex align-center gap-2">
+                    <MudText Typo="Typo.caption" Class="text-secondary chat-admin-preview" dir="auto">@conversation.LastMessagePreview</MudText>
+                    <MudSpacer />
+                    @if (conversation.Language == SiteLanguage.Arabic)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ma-0">عربي</MudChip>
+                    }
+                    @if (conversation.IsClosed)
+                    {
+                        <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ma-0">Closed</MudChip>
+                    }
+                    @if (conversation.UnreadByAgent > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ma-0">@conversation.UnreadByAgent</MudChip>
+                    }
+                </div>
+            </button>
+        }
+    </MudPaper>
+
+    <MudPaper Outlined="true" Elevation="0" Class="chat-admin-thread">
+        @if (_selected is null)
+        {
+            <div class="d-flex flex-column align-center justify-center pa-10 text-center" style="height:100%">
+                <MudIcon Icon="@Icons.Material.Outlined.Forum" Style="font-size:3rem" Class="text-secondary" />
+                <MudText Typo="Typo.body2" Class="text-secondary mt-2">Select a conversation to read and reply.</MudText>
+            </div>
+        }
+        else
+        {
+            <div class="chat-admin-header">
+                <div>
+                    <MudText Typo="Typo.h6">@_selected.VisitorName</MudText>
+                    <MudText Typo="Typo.caption" Class="text-secondary">
+                        @if (_selected.VisitorContact is { } contact)
+                        {
+                            @if (EmailAddress.TryCreate(contact, out _))
+                            {
+                                <a href="mailto:@contact">@contact</a>
+                            }
+                            else if (PhoneNumber.IsValid(contact))
+                            {
+                                <a href="tel:@contact" dir="ltr">@contact</a>
+                                <span> · </span>
+                                <a href="https://wa.me/@PhoneNumber.ToInternationalDigits(contact)" target="_blank" rel="noopener">WhatsApp</a>
+                            }
+                            else
+                            {
+                                @contact
+                            }
+                            <span> · </span>
+                        }
+                        Started @_selected.StartedAtUtc.ToLocalTime().ToString("g", System.Globalization.CultureInfo.CurrentCulture) · @_selected.Language
+                    </MudText>
+                </div>
+                <div class="d-flex gap-1">
+                    @if (!_selected.IsClosed)
+                    {
+                        <MudButton Size="Size.Small" Variant="Variant.Outlined" StartIcon="@Icons.Material.Outlined.CheckCircle" OnClick="CloseAsync">Close</MudButton>
+                    }
+                    <MudIconButton Size="Size.Small" Color="Color.Error" Icon="@Icons.Material.Outlined.Delete" OnClick="DeleteAsync" aria-label="Delete conversation" />
+                </div>
+            </div>
+            <div class="chat-messages chat-admin-messages">
+                @foreach (var message in Enumerable.Reverse(_selected.Messages))
+                {
+                    var fromVisitor = message.Sender == ChatSender.Visitor;
+                    <div class="chat-row @(fromVisitor ? "from-agent" : "from-visitor")">
+                        <div class="chat-bubble @(fromVisitor ? "chat-bubble-agent" : "chat-bubble-visitor")" dir="auto">@message.Text</div>
+                        <div class="chat-meta">@(fromVisitor ? _selected.VisitorName : message.AgentName) · @message.SentAtUtc.ToLocalTime().ToString("t", System.Globalization.CultureInfo.CurrentCulture)</div>
+                    </div>
+                }
+            </div>
+            @if (_selected.IsClosed)
+            {
+                <div class="chat-note">This conversation is closed. It reopens if the visitor writes again.</div>
+            }
+            else
+            {
+                <EditForm Model="_reply" OnSubmit="ReplyAsync" class="chat-compose">
+                    <input class="chat-input" placeholder="Type a reply…" aria-label="Reply" @bind="_reply.Text" @bind:event="oninput" maxlength="1000" dir="auto" />
+                    <button type="submit" class="chat-send" aria-label="Send" disabled="@(_sending || string.IsNullOrWhiteSpace(_reply.Text))">
+                        <MudIcon Icon="@Icons.Material.Filled.Send" Size="Size.Small" />
+                    </button>
+                </EditForm>
+            }
+        }
+    </MudPaper>
+</div>
+
+@code {
+    private IReadOnlyList<ChatConversationDto> _conversations = [];
+    private ChatConversationDto? _selected;
+    private Guid? _selectedId;
+    private bool _includeClosed;
+    private bool _sending;
+    private ReplyModel _reply = new();
+    private string _agentName = "Team";
+
+    [CascadingParameter] private Task<AuthenticationState> AuthenticationState { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _agentName = (await AuthenticationState).User.Identity?.Name ?? "Team";
+        Notifier.Changed += OnChanged;
+        await LoadListAsync();
+    }
+
+    private async Task LoadListAsync() =>
+        _conversations = await UseCases.QueryAsync<GetChatConversationsQuery, IReadOnlyList<ChatConversationDto>>(new(_includeClosed));
+
+    private async Task ToggleClosedAsync(bool value)
+    {
+        _includeClosed = value;
+        await LoadListAsync();
+    }
+
+    private async Task SelectAsync(Guid id)
+    {
+        _selectedId = id;
+        _reply = new ReplyModel();
+        await UseCases.SendAsync(new UpdateChatCommand(id, ChatAction.MarkRead));
+        await LoadSelectedAsync();
+        await LoadListAsync();
+    }
+
+    private async Task LoadSelectedAsync() =>
+        _selected = _selectedId is { } id ? await UseCases.QueryAsync<GetChatConversationQuery, ChatConversationDto?>(new(id)) : null;
+
+    private async Task ReplyAsync()
+    {
+        if (_selectedId is not { } id || string.IsNullOrWhiteSpace(_reply.Text))
+        {
+            return;
+        }
+
+        _sending = true;
+        try
+        {
+            var result = await UseCases.SendAsync(new ReplyToChatCommand(id, _agentName, _reply.Text));
+            if (result.IsFailure)
+            {
+                Snackbar.Add(result.ErrorMessage, Severity.Error);
+                return;
+            }
+
+            _reply = new ReplyModel();
+        }
+        finally
+        {
+            _sending = false;
+        }
+    }
+
+    private async Task CloseAsync()
+    {
+        if (_selectedId is { } id)
+        {
+            await UseCases.SendAsync(new UpdateChatCommand(id, ChatAction.Close));
+        }
+    }
+
+    private async Task DeleteAsync()
+    {
+        if (_selectedId is not { } id)
+        {
+            return;
+        }
+
+        var confirmed = await Dialogs.ShowMessageBoxAsync("Delete conversation", "Delete this conversation and all its messages? This cannot be undone.", yesText: "Delete", cancelText: "Cancel");
+        if (confirmed == true)
+        {
+            _selectedId = null;
+            _selected = null;
+            await UseCases.SendAsync(new UpdateChatCommand(id, ChatAction.Delete));
+        }
+    }
+
+    private void OnChanged(Guid conversationId) => _ = InvokeAsync(async () =>
+    {
+        if (conversationId == _selectedId)
+        {
+            // The open conversation counts as read while it is on screen.
+            await UseCases.SendAsync(new UpdateChatCommand(conversationId, ChatAction.MarkRead));
+            await LoadSelectedAsync();
+        }
+
+        await LoadListAsync();
+        StateHasChanged();
+    });
+
+    public void Dispose() => Notifier.Changed -= OnChanged;
+
+    private sealed class ReplyModel
+    {
+        public string Text { get; set; } = string.Empty;
+    }
+}

@@ -1,0 +1,166 @@
+@inherits LayoutComponentBase
+@implements IDisposable
+@inject BrandingService Branding
+@inject NavigationManager Navigation
+@inject UseCases UseCases
+
+<MudThemeProvider Theme="_theme" />
+<MudPopoverProvider />
+<MudDialogProvider />
+<MudSnackbarProvider />
+
+@if (_settings is not null)
+{
+    <MudRTLProvider RightToLeft="@SiteLanguages.IsRightToLeft(Lang)">
+        <MudLayout Class="public-layout">
+            <MudAppBar Elevation="0" Class="public-appbar">
+                <MudContainer MaxWidth="MaxWidth.Large" Class="d-flex align-center px-0">
+                    <BrandLogo Settings="_settings" Language="Lang" Href="@Href("/")" />
+                    <MudSpacer />
+                    <nav class="public-nav d-none d-md-flex" aria-label="@L("Main")">
+                        @foreach (var link in Links)
+                        {
+                            <NavLink class="public-nav-link" href="@Href(link.Path)" Match="@link.Match">@L(link.Label)</NavLink>
+                        }
+                        <a class="public-nav-link lang-switch" href="@SwitchHref" target="_top" hreflang="@SiteLanguages.Code(OtherLang)" lang="@SiteLanguages.Code(OtherLang)">
+                            <MudIcon Icon="@Icons.Material.Outlined.Language" Size="Size.Small" /> @OtherLangName
+                        </a>
+                        <MudButton Href="@Href("/contact")" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" Class="ms-3">
+                            @L("Get in touch")
+                        </MudButton>
+                    </nav>
+                    <a class="public-nav-link lang-switch d-md-none" href="@SwitchHref" target="_top" lang="@SiteLanguages.Code(OtherLang)">@OtherLangName</a>
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Class="d-md-none" aria-label="@L("Open menu")"
+                                   OnClick="() => _drawerOpen = true" />
+                </MudContainer>
+            </MudAppBar>
+
+            <MudDrawer @bind-Open="_drawerOpen" Anchor="Anchor.End" Variant="@DrawerVariant.Temporary" Elevation="2">
+                <MudDrawerHeader>
+                    <BrandLogo Settings="_settings" Language="Lang" Href="@Href("/")" />
+                </MudDrawerHeader>
+                <MudNavMenu>
+                    @foreach (var link in Links)
+                    {
+                        <MudNavLink Href="@Href(link.Path)" Match="@link.Match" OnClick="() => _drawerOpen = false">@L(link.Label)</MudNavLink>
+                    }
+                </MudNavMenu>
+            </MudDrawer>
+
+            <MudMainContent Class="public-main">
+                @Body
+
+                <footer class="public-footer">
+                    <MudContainer MaxWidth="MaxWidth.Large">
+                        <div class="footer-grid">
+                            <div>
+                                <BrandLogo Settings="_settings" Language="Lang" Href="@Href("/")" />
+                                @if (!string.IsNullOrWhiteSpace(_settings.TaglineFor(Lang)))
+                                {
+                                    <MudText Typo="Typo.body2" Class="mt-3 text-secondary">@_settings.TaglineFor(Lang)</MudText>
+                                }
+                            </div>
+                            <nav class="footer-links" aria-label="@L("Footer")">
+                                @foreach (var link in Links)
+                                {
+                                    <a href="@Href(link.Path)">@L(link.Label)</a>
+                                }
+                            </nav>
+                            @if (!string.IsNullOrWhiteSpace(_settings.ContactEmail))
+                            {
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">@L("Contact")</MudText>
+                                    <a href="mailto:@_settings.ContactEmail" dir="ltr">@_settings.ContactEmail</a>
+                                </div>
+                            }
+                        </div>
+                        <MudDivider Class="my-6" />
+                        <div class="d-flex flex-wrap justify-space-between gap-2">
+                            <MudText Typo="Typo.caption">&copy; @DateTime.UtcNow.Year @_settings.CompanyNameFor(Lang). @L("All rights reserved.")</MudText>
+                            <div class="d-flex gap-4">
+                                <a class="footer-admin-link" href="@SwitchHref" target="_top" lang="@SiteLanguages.Code(OtherLang)">@OtherLangName</a>
+                                <a class="footer-admin-link" href="/admin" target="_top">@L("Admin")</a>
+                            </div>
+                        </div>
+                    </MudContainer>
+                </footer>
+            </MudMainContent>
+        </MudLayout>
+
+        <WhatsAppButton Number="@_settings.WhatsAppNumber" />
+        <ChatWidget CompanyName="@_settings.CompanyNameFor(Lang)" />
+    </MudRTLProvider>
+}
+
+<div id="blazor-error-ui" data-nosnippet>
+    An unhandled error has occurred.
+    <a href="." class="reload">Reload</a>
+    <span class="dismiss">🗙</span>
+</div>
+
+@code {
+    private static readonly (string Path, string Label, NavLinkMatch Match)[] AllLinks =
+    [
+        ("/", "Home", NavLinkMatch.All),
+        ("/services", "Services", NavLinkMatch.Prefix),
+        ("/work", "Our work", NavLinkMatch.Prefix),
+        ("/about", "About", NavLinkMatch.Prefix),
+        ("/contact", "Contact", NavLinkMatch.Prefix),
+    ];
+
+    // "Our work" only appears once at least one case study is published in this language.
+    private bool _hasWork;
+
+    private IEnumerable<(string Path, string Label, NavLinkMatch Match)> Links =>
+        AllLinks.Where(l => _hasWork || l.Path != "/work");
+
+    private SiteSettingsDto? _settings;
+    private MudTheme _theme = new();
+    private bool _drawerOpen;
+
+    private SiteLanguage Lang => SiteLanguages.FromUri(Navigation.Uri);
+
+    private SiteLanguage OtherLang => SiteLanguages.Other(Lang);
+
+    private string OtherLangName => OtherLang == SiteLanguage.Arabic ? "العربية" : "English";
+
+    // Switching language reloads the page (target="_top") so the document direction and language change too.
+    private string SwitchHref => SiteLanguages.Localize(SiteLanguages.NeutralPath(new Uri(Navigation.Uri).AbsolutePath), OtherLang);
+
+    private string L(string english) => UiText.Get(Lang, english);
+
+    private string Href(string neutralPath) => SiteLanguages.Localize(neutralPath, Lang);
+
+    protected override async Task OnInitializedAsync()
+    {
+        Apply(await Branding.GetAsync());
+        _hasWork = (await UseCases.QueryAsync<Atlas.Application.Portfolio.GetCaseStudiesQuery, IReadOnlyList<Atlas.Application.Portfolio.CaseStudyDto>>(
+            new(Lang, PublishedOnly: true))).Count > 0;
+        Branding.Changed += OnBrandingChanged;
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    private void OnBrandingChanged(SiteSettingsDto settings) => _ = InvokeAsync(() =>
+    {
+        Apply(settings);
+        StateHasChanged();
+    });
+
+    private void Apply(SiteSettingsDto settings)
+    {
+        if (_settings?.PrimaryColor != settings.PrimaryColor)
+        {
+            _theme = ThemeFactory.Create(settings.PrimaryColor);
+        }
+
+        _settings = settings;
+    }
+
+    public void Dispose()
+    {
+        Branding.Changed -= OnBrandingChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
+}

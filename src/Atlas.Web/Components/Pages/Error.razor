@@ -1,0 +1,32 @@
+@page "/Error"
+@using System.Diagnostics
+@inherits PublicComponentBase
+
+<PageTitle>@L("Something went wrong")</PageTitle>
+<HeadContent><meta name="robots" content="noindex" /></HeadContent>
+
+<section class="section">
+    <MudContainer MaxWidth="MaxWidth.Small" Class="text-center py-16">
+        <MudText Typo="Typo.h4" HtmlTag="h1" Color="Color.Error">@L("Something went wrong")</MudText>
+        <MudText Typo="Typo.body1" Class="mt-2 mb-6">@L("An error occurred while processing your request. Please try again.")</MudText>
+        @if (ShowRequestId)
+        {
+            <MudText Typo="Typo.caption">Request ID: <code>@RequestId</code></MudText>
+        }
+        <div class="mt-6">
+            <MudButton Href="@Href("/")" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false">@L("Back to home")</MudButton>
+        </div>
+    </MudContainer>
+</section>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+
+    private bool ShowRequestId => !string.IsNullOrEmpty(RequestId);
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

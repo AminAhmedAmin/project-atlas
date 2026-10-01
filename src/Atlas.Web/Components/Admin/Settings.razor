@@ -1,0 +1,237 @@
+@page "/admin/settings"
+@inject UseCases UseCases
+@inject BrandingService Branding
+@inject ISnackbar Snackbar
+
+<PageTitle>Settings | Admin</PageTitle>
+
+<AdminPageHeader Title="Settings" Description="Company name, logo, brand color and contact details used across the website." />
+
+@if (_model is null || _settings is null)
+{
+    <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+}
+else
+{
+    <MudGrid Spacing="4">
+        <MudItem xs="12" lg="7">
+            <MudPaper Outlined="true" Elevation="0" Class="pa-6">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-4">Company</MudText>
+                <EditForm Model="_model" OnSubmit="SaveAsync">
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_model.CompanyName" Label="Company name" Variant="Variant.Outlined" Required="true"
+                                          MaxLength="Atlas.Domain.Settings.SiteSettings.CompanyNameMaxLength"
+                                          Error="_errors.Has(nameof(_model.CompanyName))" ErrorText="@_errors.For(nameof(_model.CompanyName))" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_model.Tagline" Label="Tagline" Variant="Variant.Outlined"
+                                          HelperText="Shown in the footer and the home page title."
+                                          MaxLength="Atlas.Domain.Settings.SiteSettings.TaglineMaxLength"
+                                          Error="_errors.Has(nameof(_model.Tagline))" ErrorText="@_errors.For(nameof(_model.Tagline))" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.ArabicCompanyName" Label="Company name (Arabic)" Variant="Variant.Outlined" dir="rtl"
+                                          HelperText="Shown on the Arabic site. Leave empty to use the English name."
+                                          MaxLength="Atlas.Domain.Settings.SiteSettings.CompanyNameMaxLength"
+                                          Error="_errors.Has(nameof(_model.ArabicCompanyName))" ErrorText="@_errors.For(nameof(_model.ArabicCompanyName))" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.ArabicTagline" Label="Tagline (Arabic)" Variant="Variant.Outlined" dir="rtl"
+                                          MaxLength="Atlas.Domain.Settings.SiteSettings.TaglineMaxLength"
+                                          Error="_errors.Has(nameof(_model.ArabicTagline))" ErrorText="@_errors.For(nameof(_model.ArabicTagline))" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_model.ContactEmail" Label="Contact e-mail" Variant="Variant.Outlined" InputType="InputType.Email"
+                                          HelperText="Shown on the website and notified about new contact messages."
+                                          Error="_errors.Has(nameof(_model.ContactEmail))" ErrorText="@_errors.For(nameof(_model.ContactEmail))" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_model.WhatsAppNumber" Label="WhatsApp number" Variant="Variant.Outlined" dir="ltr"
+                                          InputType="InputType.Telephone" Placeholder="+966 55 123 4567"
+                                          HelperText="Shows a WhatsApp button on every page. Leave empty to hide it."
+                                          Error="_errors.Has(nameof(_model.WhatsAppNumber))" ErrorText="@_errors.For(nameof(_model.WhatsAppNumber))" />
+                        </MudItem>
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.subtitle2" Class="mb-2">Primary color</MudText>
+                            <div class="d-flex flex-wrap align-center gap-2 mb-3">
+                                @foreach (var swatch in Swatches)
+                                {
+                                    <button type="button" class="color-swatch @(string.Equals(swatch, _model.PrimaryColor, StringComparison.OrdinalIgnoreCase) ? "selected" : "")"
+                                            style="background:@swatch" title="@swatch" aria-label="Use @swatch" @onclick="() => _model.PrimaryColor = swatch"></button>
+                                }
+                            </div>
+                            <MudColorPicker @bind-Text="_model.PrimaryColor" Label="Custom color" Variant="Variant.Outlined" ShowAlpha="false"
+                                            ColorPickerView="ColorPickerView.Spectrum"
+                                            Error="_errors.Has(nameof(_model.PrimaryColor))" ErrorText="@_errors.For(nameof(_model.PrimaryColor))" />
+                        </MudItem>
+                        @if (_errors.General is not null)
+                        {
+                            <MudItem xs="12"><MudAlert Severity="Severity.Error" Dense="true">@_errors.General</MudAlert></MudItem>
+                        }
+                        <MudItem xs="12">
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false"
+                                       Disabled="_saving" StartIcon="@Icons.Material.Outlined.Save">Save settings</MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </EditForm>
+            </MudPaper>
+        </MudItem>
+
+        <MudItem xs="12" lg="5">
+            <MudPaper Outlined="true" Elevation="0" Class="pa-6 mb-4">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-4">Logo</MudText>
+                <div class="logo-preview mb-4">
+                    <BrandLogo Settings="_settings" Height="56" />
+                </div>
+                <div class="d-flex flex-wrap gap-2">
+                    <MudFileUpload @ref="_upload" T="IBrowserFile" Accept=".png,.jpg,.jpeg,.webp" FilesChanged="UploadLogoAsync" Disabled="_uploading">
+                        <CustomContent>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Upload"
+                                       Disabled="_uploading" OnClick="@context.OpenFilePickerAsync">
+                                @(_uploading ? "Uploading…" : "Upload logo")
+                            </MudButton>
+                        </CustomContent>
+                    </MudFileUpload>
+                    @if (!string.IsNullOrWhiteSpace(_settings.LogoUrl))
+                    {
+                        <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Outlined.Delete" OnClick="RemoveLogoAsync">Remove</MudButton>
+                    }
+                </div>
+                <MudText Typo="Typo.caption" Class="text-secondary d-block mt-3">PNG, JPEG or WebP, up to 2 MB. A wide logo about 40–60 px tall works best.</MudText>
+            </MudPaper>
+
+            <MudPaper Outlined="true" Elevation="0" Class="pa-6">
+                <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-3">Preview</MudText>
+                <div class="brand-preview" style="--preview-color:@PreviewColor">
+                    <MudText Typo="Typo.subtitle1" Class="font-weight-bold">@(string.IsNullOrWhiteSpace(_model.CompanyName) ? "Company name" : _model.CompanyName)</MudText>
+                    <MudText Typo="Typo.body2" Class="text-secondary mb-3">@_model.Tagline</MudText>
+                    <span class="brand-preview-button">Primary button</span>
+                </div>
+            </MudPaper>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    private static readonly string[] Swatches = ["#1e63e9", "#0f766e", "#7c3aed", "#db2777", "#ea580c", "#16a34a", "#0f172a"];
+
+    private SettingsModel? _model;
+    private SiteSettingsDto? _settings;
+    private readonly FieldErrors _errors = new();
+    private bool _saving;
+    private bool _uploading;
+    private MudFileUpload<IBrowserFile>? _upload;
+
+    private string PreviewColor => Atlas.Domain.Common.HexColor.TryCreate(_model?.PrimaryColor, out var color) ? color.Value : _settings?.PrimaryColor ?? "#000000";
+
+    protected override async Task OnInitializedAsync()
+    {
+        _settings = await UseCases.QueryAsync<GetSiteSettingsQuery, SiteSettingsDto>(new());
+        _model = new SettingsModel
+        {
+            CompanyName = _settings.CompanyName,
+            Tagline = _settings.Tagline,
+            PrimaryColor = _settings.PrimaryColor,
+            ContactEmail = _settings.ContactEmail,
+            ArabicCompanyName = _settings.ArabicCompanyName,
+            ArabicTagline = _settings.ArabicTagline,
+            WhatsAppNumber = _settings.WhatsAppNumber is { } wa ? "+" + wa : null,
+        };
+    }
+
+    private async Task SaveAsync()
+    {
+        if (_model is null)
+        {
+            return;
+        }
+
+        _saving = true;
+        try
+        {
+            var result = await UseCases.SendAsync<UpdateSiteSettingsCommand, SiteSettingsDto>(
+                new(_model.CompanyName, _model.Tagline, _model.PrimaryColor, _model.ContactEmail, _model.ArabicCompanyName, _model.ArabicTagline, _model.WhatsAppNumber));
+
+            _errors.Set(result);
+            if (result.IsSuccess)
+            {
+                _settings = result.Value;
+                _model.PrimaryColor = result.Value.PrimaryColor;
+                await Branding.RefreshAsync();
+                Snackbar.Add("Settings saved. The website has been updated.", Severity.Success);
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private async Task UploadLogoAsync(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        if (file.Size > UploadLogoValidator.MaxBytes)
+        {
+            Snackbar.Add("The logo must be 2 MB or smaller.", Severity.Warning);
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            await using var stream = file.OpenReadStream(UploadLogoValidator.MaxBytes);
+            var result = await UseCases.SendAsync<UploadLogoCommand, string>(new(stream, file.Name, file.ContentType, file.Size));
+            if (result.IsSuccess)
+            {
+                await Branding.RefreshAsync();
+                _settings = await Branding.GetAsync();
+                Snackbar.Add("Logo updated.", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage, Severity.Error);
+            }
+        }
+        finally
+        {
+            _uploading = false;
+            if (_upload is not null)
+            {
+                await _upload.ClearAsync();
+            }
+        }
+    }
+
+    private async Task RemoveLogoAsync()
+    {
+        var result = await UseCases.SendAsync(new RemoveLogoCommand());
+        if (result.IsSuccess)
+        {
+            await Branding.RefreshAsync();
+            _settings = await Branding.GetAsync();
+            Snackbar.Add("Logo removed.", Severity.Success);
+        }
+    }
+
+    private sealed class SettingsModel
+    {
+        public string CompanyName { get; set; } = string.Empty;
+
+        public string? Tagline { get; set; }
+
+        public string PrimaryColor { get; set; } = string.Empty;
+
+        public string? ContactEmail { get; set; }
+
+        public string? ArabicCompanyName { get; set; }
+
+        public string? ArabicTagline { get; set; }
+
+        public string? WhatsAppNumber { get; set; }
+    }
+}

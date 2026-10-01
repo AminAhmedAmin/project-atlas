@@ -1,0 +1,48 @@
+@page "/about"
+@page "/ar/about"
+@inherits PublicComponentBase
+@inject BrandingService Branding
+@inject UseCases UseCases
+
+@if (Settings is not null && Page is not null)
+{
+    <SeoHead Title="@Render(Page.Title)" Description="@Page.MetaDescription" CompanyName="@CompanyNameOf(Settings, Lang)" />
+
+    <PageHeader Title="@Render(Page.Title)" Subtitle="@Render(Page.Subtitle)" />
+
+    <section class="section">
+        <MudContainer MaxWidth="MaxWidth.Medium" Class="prose">
+            @foreach (var paragraph in ContentText.Paragraphs(Page.Body, CompanyNameOf(Settings, Lang)))
+            {
+                <MudText Typo="Typo.body1" Class="mb-5 about-paragraph">@paragraph</MudText>
+            }
+
+            <div class="mt-8">
+                @if (!string.IsNullOrWhiteSpace(Page.CallToActionText) && !string.IsNullOrWhiteSpace(Page.CallToActionUrl))
+                {
+                    <MudButton Href="@Page.CallToActionUrl" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false">
+                        @Page.CallToActionText
+                    </MudButton>
+                }
+                else
+                {
+                    <MudButton Href="@Href("/contact")" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false">@L("Work with us")</MudButton>
+                }
+            </div>
+        </MudContainer>
+    </section>
+}
+
+@code {
+    [PersistentState] public SiteSettingsDto? Settings { get; set; }
+
+    [PersistentState] public PageContentDto? Page { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Settings ??= await Branding.GetAsync();
+        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.About, Lang));
+    }
+
+    private string Render(string? text) => ContentText.Render(text, CompanyNameOf(Settings, Lang));
+}

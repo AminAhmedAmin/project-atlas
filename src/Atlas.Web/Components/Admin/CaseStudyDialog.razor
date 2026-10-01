@@ -1,0 +1,221 @@
+@using Atlas.Application.Portfolio
+@using Atlas.Domain.Portfolio
+@inject UseCases UseCases
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">@(Study is null ? "Add case study" : "Edit case study") (@Language)</MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudGrid Spacing="3" dir="@SiteLanguages.Direction(Language)">
+            <MudItem xs="12" sm="8">
+                <MudTextField T="string" Value="_model.Title" ValueChanged="OnTitleChanged" Label="Title" Variant="Variant.Outlined" Required="true"
+                              MaxLength="CaseStudy.TitleMaxLength" Error="_errors.Has(nameof(_model.Title))" ErrorText="@_errors.For(nameof(_model.Title))" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudTextField @bind-Value="_model.Client" Label="Client (optional)" Variant="Variant.Outlined"
+                              MaxLength="CaseStudy.ClientMaxLength" Error="_errors.Has(nameof(_model.Client))" ErrorText="@_errors.For(nameof(_model.Client))" />
+            </MudItem>
+            <MudItem xs="12" sm="8">
+                <MudTextField @bind-Value="_model.Slug" Label="URL name" Variant="Variant.Outlined" Required="true" dir="ltr"
+                              HelperText="@($"Address: {SiteLanguages.Localize($"/work/{(string.IsNullOrWhiteSpace(_model.Slug) ? "..." : _model.Slug)}", Language)} (lowercase letters, digits and dashes)")"
+                              MaxLength="CaseStudy.SlugMaxLength" Error="_errors.Has(nameof(_model.Slug))" ErrorText="@_errors.For(nameof(_model.Slug))" />
+            </MudItem>
+            <MudItem xs="12" sm="4">
+                <MudNumericField T="int" @bind-Value="_model.DisplayOrder" Label="Order" Variant="Variant.Outlined" Min="0" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_model.Summary" Label="Summary" Variant="Variant.Outlined" Required="true" Lines="2"
+                              HelperText="One or two sentences shown on the card." MaxLength="CaseStudy.SummaryMaxLength" Counter="CaseStudy.SummaryMaxLength"
+                              Error="_errors.Has(nameof(_model.Summary))" ErrorText="@_errors.For(nameof(_model.Summary))" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_model.Highlights" Label="Results (one per line)" Variant="Variant.Outlined" Lines="3" Sizing="InputSizing.Auto"
+                              HelperText="Concrete outcomes, e.g. &quot;40% more online bookings&quot;." MaxLength="CaseStudy.HighlightsMaxLength"
+                              Error="_errors.Has(nameof(_model.Highlights))" ErrorText="@_errors.For(nameof(_model.Highlights))" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_model.Body" Label="Story" Variant="Variant.Outlined" Lines="6" Sizing="InputSizing.Auto"
+                              HelperText="The challenge, what you built and the result. Separate paragraphs with a blank line." MaxLength="CaseStudy.BodyMaxLength"
+                              Error="_errors.Has(nameof(_model.Body))" ErrorText="@_errors.For(nameof(_model.Body))" />
+            </MudItem>
+            <MudItem xs="12">
+                <MudTextField @bind-Value="_model.Tags" Label="Tags" Variant="Variant.Outlined" Placeholder="Web, iOS, Android"
+                              HelperText="Comma-separated." MaxLength="CaseStudy.TagsMaxLength"
+                              Error="_errors.Has(nameof(_model.Tags))" ErrorText="@_errors.For(nameof(_model.Tags))" />
+            </MudItem>
+            <MudItem xs="12">
+                <div class="d-flex flex-wrap align-center gap-3">
+                    <div class="logo-preview block-logo-preview case-cover-preview">
+                        @if (!string.IsNullOrWhiteSpace(_model.CoverImageUrl))
+                        {
+                            <img src="@_model.CoverImageUrl" alt="" />
+                        }
+                        else
+                        {
+                            <MudText Typo="Typo.caption" Class="text-secondary">No cover image</MudText>
+                        }
+                    </div>
+                    <MudFileUpload @ref="_upload" T="IBrowserFile" Accept=".png,.jpg,.jpeg,.webp" FilesChanged="UploadAsync" Disabled="_uploading">
+                        <CustomContent>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.Upload"
+                                       Disabled="_uploading" OnClick="@context.OpenFilePickerAsync">
+                                @(_uploading ? "Uploading…" : "Upload cover")
+                            </MudButton>
+                        </CustomContent>
+                    </MudFileUpload>
+                    @if (!string.IsNullOrWhiteSpace(_model.CoverImageUrl))
+                    {
+                        <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="() => _model.CoverImageUrl = null">Remove</MudButton>
+                    }
+                </div>
+                <MudText Typo="Typo.caption" Class="text-secondary d-block mt-2">A wide screenshot (16:9) works best. PNG, JPEG or WebP up to 2 MB.</MudText>
+            </MudItem>
+            <MudItem xs="12" Class="d-flex flex-wrap gap-6">
+                <MudSwitch T="bool" @bind-Value="_model.IsPublished" Color="Color.Primary" Label="Published on website" />
+                <MudSwitch T="bool" @bind-Value="_model.IsFeatured" Color="Color.Primary" Label="Featured on home page" />
+            </MudItem>
+            @if (_errors.General is not null)
+            {
+                <MudItem xs="12"><MudAlert Severity="Severity.Error" Dense="true">@_errors.General</MudAlert></MudItem>
+            }
+        </MudGrid>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="() => Dialog.Cancel()">Cancel</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" DropShadow="false" Disabled="@(_saving || _uploading)" OnClick="SaveAsync">Save</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    private StudyModel _model = new();
+    private readonly FieldErrors _errors = new();
+    private MudFileUpload<IBrowserFile>? _upload;
+    private bool _saving;
+    private bool _uploading;
+    private bool _slugEdited;
+
+    [CascadingParameter] private IMudDialogInstance Dialog { get; set; } = default!;
+
+    [Parameter] public CaseStudyDto? Study { get; set; }
+
+    [Parameter] public SiteLanguage Language { get; set; } = SiteLanguage.English;
+
+    [Parameter] public int NextDisplayOrder { get; set; }
+
+    protected override void OnInitialized()
+    {
+        _slugEdited = Study is not null;
+        _model = Study is null
+            ? new StudyModel { DisplayOrder = NextDisplayOrder, IsPublished = true }
+            : new StudyModel
+            {
+                Title = Study.Title,
+                Client = Study.Client,
+                Slug = Study.Slug,
+                Summary = Study.Summary,
+                Highlights = Study.Highlights,
+                Body = Study.Body,
+                Tags = Study.Tags,
+                CoverImageUrl = Study.CoverImageUrl,
+                DisplayOrder = Study.DisplayOrder,
+                IsPublished = Study.IsPublished,
+                IsFeatured = Study.IsFeatured,
+            };
+    }
+
+    private void OnTitleChanged(string value)
+    {
+        _model.Title = value;
+
+        // Suggest a URL name from Latin titles until the admin edits it themselves.
+        if (!_slugEdited && CaseStudy.SuggestSlug(value) is { } suggestion)
+        {
+            _model.Slug = suggestion;
+        }
+    }
+
+    private async Task UploadAsync(IBrowserFile? file)
+    {
+        if (file is null)
+        {
+            return;
+        }
+
+        if (file.Size > ImageUpload.MaxBytes)
+        {
+            Snackbar.Add("The image must be 2 MB or smaller.", Severity.Warning);
+            return;
+        }
+
+        _uploading = true;
+        try
+        {
+            await using var stream = file.OpenReadStream(ImageUpload.MaxBytes);
+            var result = await UseCases.SendAsync<UploadContentImageCommand, string>(new(stream, file.Name, file.ContentType, file.Size));
+            if (result.IsSuccess)
+            {
+                _model.CoverImageUrl = result.Value;
+            }
+            else
+            {
+                Snackbar.Add(result.ErrorMessage, Severity.Error);
+            }
+        }
+        finally
+        {
+            _uploading = false;
+            if (_upload is not null)
+            {
+                await _upload.ClearAsync();
+            }
+        }
+    }
+
+    private async Task SaveAsync()
+    {
+        _saving = true;
+        try
+        {
+            var result = await UseCases.SendAsync<SaveCaseStudyCommand, CaseStudyDto>(new(
+                Study?.Id, Language, _model.Slug, _model.Title, _model.Summary, _model.Client, _model.Highlights,
+                _model.Body, _model.Tags, _model.CoverImageUrl, _model.DisplayOrder, _model.IsPublished, _model.IsFeatured));
+
+            _errors.Set(result);
+            if (result.IsSuccess)
+            {
+                Dialog.Close(DialogResult.Ok(result.Value));
+            }
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
+    private sealed class StudyModel
+    {
+        public string Title { get; set; } = string.Empty;
+
+        public string? Client { get; set; }
+
+        public string Slug { get; set; } = string.Empty;
+
+        public string Summary { get; set; } = string.Empty;
+
+        public string? Highlights { get; set; }
+
+        public string? Body { get; set; }
+
+        public string? Tags { get; set; }
+
+        public string? CoverImageUrl { get; set; }
+
+        public int DisplayOrder { get; set; }
+
+        public bool IsPublished { get; set; }
+
+        public bool IsFeatured { get; set; }
+    }
+}

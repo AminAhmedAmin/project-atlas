@@ -1,0 +1,31 @@
+<MudPaper Class="service-card pa-6" Elevation="0" Outlined="true">
+    <div class="service-icon">
+        <MudIcon Icon="@ServiceIcons.For(Service.Icon)" Color="Color.Primary" Size="Size.Large" />
+    </div>
+    <MudText Typo="Typo.h6" HtmlTag="h3" Class="mt-4 mb-2">@Service.Title</MudText>
+    <MudText Typo="Typo.body1" Class="text-secondary">@Service.Summary</MudText>
+    @if (ShowDescription && !string.IsNullOrWhiteSpace(Service.Description))
+    {
+        @foreach (var paragraph in ContentText.Paragraphs(Service.Description, CompanyName))
+        {
+            <MudText Typo="Typo.body2" Class="mt-3">@paragraph</MudText>
+        }
+    }
+    @if (!string.IsNullOrWhiteSpace(AskHref))
+    {
+        <MudLink Href="@AskHref" Typo="Typo.body2" Class="mt-4 d-inline-block service-ask">@AskText</MudLink>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public ServiceDto Service { get; set; } = default!;
+
+    [Parameter] public bool ShowDescription { get; set; }
+
+    [Parameter] public string CompanyName { get; set; } = string.Empty;
+
+    /// <summary>Optional link to the contact form with this service preselected.</summary>
+    [Parameter] public string? AskHref { get; set; }
+
+    [Parameter] public string? AskText { get; set; }
+}

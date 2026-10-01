@@ -1,0 +1,51 @@
+@page "/work"
+@page "/ar/work"
+@using Atlas.Application.Portfolio
+@inherits PublicComponentBase
+@inject BrandingService Branding
+@inject UseCases UseCases
+
+@if (Settings is not null && Studies is not null)
+{
+    <SeoHead Title="@L("Our work")" Description="@L("Real projects for real businesses, and the results they achieved.")" CompanyName="@CompanyNameOf(Settings, Lang)" />
+
+    <PageHeader Title="@L("Projects we're proud of")" Subtitle="@L("Real projects for real businesses, and the results they achieved.")" />
+
+    <section class="section">
+        <MudContainer MaxWidth="MaxWidth.Large">
+            @if (Studies.Count == 0)
+            {
+                <MudText Typo="Typo.body1" Class="text-secondary">@L("Case studies are coming soon.")</MudText>
+            }
+            else
+            {
+                <div class="case-grid">
+                    @foreach (var study in Studies)
+                    {
+                        <CaseStudyCard Study="study" />
+                    }
+                </div>
+            }
+        </MudContainer>
+    </section>
+
+    <section class="cta-band">
+        <MudContainer MaxWidth="MaxWidth.Medium" Class="text-center">
+            <MudText Typo="Typo.h4" HtmlTag="h2" Class="mb-3">@L("Have a project in mind?")</MudText>
+            <MudText Typo="Typo.body1" Class="mb-6">@L("Tell us about it and get a free estimate.")</MudText>
+            <MudButton Href="@Href("/contact")" Variant="Variant.Filled" Size="Size.Large" Class="cta-band-button" DropShadow="false">@L("Contact us")</MudButton>
+        </MudContainer>
+    </section>
+}
+
+@code {
+    [PersistentState] public SiteSettingsDto? Settings { get; set; }
+
+    [PersistentState] public List<CaseStudyDto>? Studies { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        Settings ??= await Branding.GetAsync();
+        Studies ??= (await UseCases.QueryAsync<GetCaseStudiesQuery, IReadOnlyList<CaseStudyDto>>(new(Lang, PublishedOnly: true))).ToList();
+    }
+}

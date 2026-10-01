@@ -1,0 +1,23 @@
+<MudPaper Outlined="true" Elevation="0" Class="kpi-card pa-5">
+    <div class="d-flex align-center justify-space-between">
+        <MudText Typo="Typo.body2" Class="text-secondary">@Label</MudText>
+        <div class="kpi-icon"><MudIcon Icon="@Icon" Color="Color.Primary" /></div>
+    </div>
+    <MudText Typo="Typo.h4" Class="mt-2 kpi-value">@Value.ToString("N0", System.Globalization.CultureInfo.CurrentCulture)</MudText>
+    @if (!string.IsNullOrWhiteSpace(Href))
+    {
+        <MudLink Href="@Href" Typo="Typo.body2" Class="mt-2 d-inline-block">@LinkText</MudLink>
+    }
+</MudPaper>
+
+@code {
+    [Parameter, EditorRequired] public string Label { get; set; } = string.Empty;
+
+    [Parameter, EditorRequired] public int Value { get; set; }
+
+    [Parameter, EditorRequired] public string Icon { get; set; } = string.Empty;
+
+    [Parameter] public string? Href { get; set; }
+
+    [Parameter] public string LinkText { get; set; } = "View";
+}

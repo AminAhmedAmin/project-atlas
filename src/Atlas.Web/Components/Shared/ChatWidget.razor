@@ -1,0 +1,264 @@
+@using Atlas.Application.Chat
+@using Atlas.Web.Chat
+@using System.Text.Json
+@inherits PublicComponentBase
+@implements IDisposable
+@inject UseCases UseCases
+@inject ChatNotifier Notifier
+@inject IJSRuntime JS
+
+<div class="chat-widget">
+    @if (_open)
+    {
+        <section class="chat-panel" role="dialog" aria-label="@L("Chat with us")">
+            <header class="chat-header">
+                <div>
+                    <div class="chat-title">@CompanyName</div>
+                    <div class="chat-subtitle">@L("We'll reply here as soon as we can.")</div>
+                </div>
+                <button type="button" class="chat-icon-button" aria-label="@L("Close chat")" @onclick="() => _open = false">
+                    <MudIcon Icon="@Icons.Material.Filled.Close" />
+                </button>
+            </header>
+
+            @if (_chat is null)
+            {
+                <EditForm Model="_start" OnSubmit="StartAsync" class="chat-start">
+                    <p class="chat-bubble chat-bubble-agent">@L("Hi! How can we help you today?")</p>
+                    <input class="chat-input" placeholder="@L("Your name")" aria-label="@L("Your name")" @bind="_start.Name" maxlength="100" autocomplete="name" />
+                    <input class="chat-input" placeholder="@L("E-mail or phone (optional)")" aria-label="@L("E-mail or phone (optional)")" @bind="_start.Contact" maxlength="150" dir="auto" />
+                    <small class="chat-hint">@L("So we can reach you if you leave the page.")</small>
+                    <textarea class="chat-input" rows="3" placeholder="@L("Your message")" aria-label="@L("Your message")" @bind="_start.Message" maxlength="1000"></textarea>
+                    @if (_error is not null)
+                    {
+                        <div class="chat-error" role="alert">@_error</div>
+                    }
+                    <button type="submit" class="chat-primary-button" disabled="@_busy">@L("Start chat")</button>
+                </EditForm>
+            }
+            else
+            {
+                @* column-reverse keeps the newest message in view without JavaScript. *@
+                <div class="chat-messages" aria-live="polite">
+                    @foreach (var message in Enumerable.Reverse(_chat.Messages))
+                    {
+                        <div class="chat-row @(message.FromVisitor ? "from-visitor" : "from-agent")">
+                            <div class="chat-bubble @(message.FromVisitor ? "chat-bubble-visitor" : "chat-bubble-agent")" dir="auto">@message.Text</div>
+                            <div class="chat-meta">@(message.FromVisitor ? L("You") : CompanyName) · @message.SentAtUtc.ToLocalTime().ToString("HH:mm", System.Globalization.CultureInfo.InvariantCulture)</div>
+                        </div>
+                    }
+                </div>
+                @if (_chat.IsClosed)
+                {
+                    <div class="chat-note">@L("This chat was closed. Send a message to reopen it.")</div>
+                }
+                @if (_error is not null)
+                {
+                    <div class="chat-error" role="alert">@_error</div>
+                }
+                <EditForm Model="_reply" OnSubmit="SendAsync" class="chat-compose">
+                    <input class="chat-input" placeholder="@L("Type a message…")" aria-label="@L("Type a message…")" @bind="_reply.Text" @bind:event="oninput" maxlength="1000" dir="auto" />
+                    <button type="submit" class="chat-send" aria-label="@L("Send")" disabled="@(_busy || string.IsNullOrWhiteSpace(_reply.Text))">
+                        <MudIcon Icon="@Icons.Material.Filled.Send" Size="Size.Small" Style="@(IsArabic ? "transform:scaleX(-1)" : null)" />
+                    </button>
+                </EditForm>
+            }
+        </section>
+    }
+
+    <button type="button" class="chat-fab" aria-label="@(_open ? L("Close chat") : L("Open chat"))" aria-expanded="@(_open ? "true" : "false")" @onclick="Toggle">
+        <MudIcon Icon="@(_open ? Icons.Material.Filled.Close : Icons.Material.Filled.ChatBubble)" />
+        @if (_unread && !_open)
+        {
+            <span class="chat-unread" aria-label="@L("New message")"></span>
+        }
+    </button>
+</div>
+
+@code {
+    private const string StorageKey = "atlas-chat";
+    private static readonly TimeSpan MinInterval = TimeSpan.FromSeconds(1.5);
+    private const int MaxPerMinute = 20;
+
+    private readonly Queue<DateTime> _sentTimes = new();
+    private StartModel _start = new();
+    private ReplyModel _reply = new();
+    private VisitorChatDto? _chat;
+    private StoredChat? _stored;
+    private bool _open;
+    private bool _busy;
+    private bool _unread;
+    private string? _error;
+
+    [Parameter, EditorRequired] public string CompanyName { get; set; } = string.Empty;
+
+    protected override void OnInitialized() => Notifier.Changed += OnConversationChanged;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            return;
+        }
+
+        try
+        {
+            var json = await JS.InvokeAsync<string?>("localStorage.getItem", StorageKey);
+            _stored = json is null ? null : JsonSerializer.Deserialize<StoredChat>(json);
+        }
+        catch (JsonException)
+        {
+            _stored = null;
+        }
+
+        if (_stored is not null)
+        {
+            await ReloadAsync();
+            if (_chat is null)
+            {
+                // Deleted or invalid: forget it so the visitor can start a new chat.
+                _stored = null;
+                await JS.InvokeVoidAsync("localStorage.removeItem", StorageKey);
+            }
+
+            StateHasChanged();
+        }
+    }
+
+    private void Toggle()
+    {
+        _open = !_open;
+        _unread = false;
+        _error = null;
+    }
+
+    private async Task StartAsync()
+    {
+        _error = null;
+        if (string.IsNullOrWhiteSpace(_start.Name) || string.IsNullOrWhiteSpace(_start.Message))
+        {
+            _error = L("Please enter your name and a message.");
+            return;
+        }
+
+        if (!TryRecordSend())
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var result = await UseCases.SendAsync<StartChatCommand, StartChatResult>(new(_start.Name, _start.Contact, Lang, _start.Message));
+            if (result.IsFailure)
+            {
+                _error = L("Something went wrong. Please try again.");
+                return;
+            }
+
+            _stored = new StoredChat(result.Value.ConversationId, result.Value.AccessToken);
+            await JS.InvokeVoidAsync("localStorage.setItem", StorageKey, JsonSerializer.Serialize(_stored));
+            _start = new StartModel();
+            await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    private async Task SendAsync()
+    {
+        _error = null;
+        if (_stored is null || string.IsNullOrWhiteSpace(_reply.Text) || !TryRecordSend())
+        {
+            return;
+        }
+
+        _busy = true;
+        try
+        {
+            var result = await UseCases.SendAsync(new SendVisitorChatMessageCommand(_stored.Id, _stored.Token, _reply.Text));
+            if (result.IsFailure)
+            {
+                _error = L("Something went wrong. Please try again.");
+                return;
+            }
+
+            _reply = new ReplyModel();
+            await ReloadAsync();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+
+    /// <summary>Simple per-visitor flood protection.</summary>
+    private bool TryRecordSend()
+    {
+        var now = DateTime.UtcNow;
+        while (_sentTimes.Count > 0 && now - _sentTimes.Peek() > TimeSpan.FromMinutes(1))
+        {
+            _sentTimes.Dequeue();
+        }
+
+        var tooSoon = _sentTimes.Count > 0 && now - _sentTimes.Last() < MinInterval;
+        if (tooSoon || _sentTimes.Count >= MaxPerMinute)
+        {
+            _error = L("You're sending messages too quickly. Please wait a moment.");
+            return false;
+        }
+
+        _sentTimes.Enqueue(now);
+        return true;
+    }
+
+    private async Task ReloadAsync()
+    {
+        if (_stored is null)
+        {
+            return;
+        }
+
+        _chat = await UseCases.QueryAsync<GetVisitorChatQuery, VisitorChatDto?>(new(_stored.Id, _stored.Token));
+    }
+
+    private void OnConversationChanged(Guid conversationId)
+    {
+        if (_stored is null || conversationId != _stored.Id)
+        {
+            return;
+        }
+
+        _ = InvokeAsync(async () =>
+        {
+            var before = _chat?.Messages.Count ?? 0;
+            await ReloadAsync();
+            if (!_open && (_chat?.Messages.Count ?? 0) > before && _chat?.Messages[^1].FromVisitor == false)
+            {
+                _unread = true;
+            }
+
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose() => Notifier.Changed -= OnConversationChanged;
+
+    private sealed record StoredChat(Guid Id, string Token);
+
+    private sealed class StartModel
+    {
+        public string Name { get; set; } = string.Empty;
+
+        public string? Contact { get; set; }
+
+        public string Message { get; set; } = string.Empty;
+    }
+
+    private sealed class ReplyModel
+    {
+        public string Text { get; set; } = string.Empty;
+    }
+}
