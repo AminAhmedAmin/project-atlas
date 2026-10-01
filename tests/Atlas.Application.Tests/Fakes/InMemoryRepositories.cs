@@ -1,5 +1,6 @@
 using Atlas.Application.Abstractions;
 using Atlas.Application.Common;
+using Atlas.Domain.Common;
 using Atlas.Domain.Contact;
 using Atlas.Domain.Content;
 using Atlas.Domain.Settings;
@@ -30,8 +31,8 @@ internal sealed class InMemoryPageContentRepository : IPageContentRepository
 {
     public List<PageContent> Pages { get; } = [];
 
-    public Task<PageContent?> GetAsync(PageKey key, CancellationToken cancellationToken = default) =>
-        Task.FromResult(Pages.FirstOrDefault(p => p.Key == key));
+    public Task<PageContent?> GetAsync(PageKey key, SiteLanguage language, CancellationToken cancellationToken = default) =>
+        Task.FromResult(Pages.FirstOrDefault(p => p.Key == key && p.Language == language));
 
     public void Add(PageContent page) => Pages.Add(page);
 }
@@ -43,8 +44,11 @@ internal sealed class InMemoryServiceRepository : IServiceRepository
     public Task<Service?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Services.FirstOrDefault(s => s.Id == id));
 
-    public Task<IReadOnlyList<Service>> ListAsync(bool publishedOnly, CancellationToken cancellationToken = default) =>
-        Task.FromResult<IReadOnlyList<Service>>(Services.Where(s => !publishedOnly || s.IsPublished).ToList());
+    public Task<IReadOnlyList<Service>> ListAsync(SiteLanguage? language, bool publishedOnly, CancellationToken cancellationToken = default) =>
+        Task.FromResult<IReadOnlyList<Service>>(Services
+            .Where(s => language is null || s.Language == language)
+            .Where(s => !publishedOnly || s.IsPublished)
+            .ToList());
 
     public Task<int> CountAsync(CancellationToken cancellationToken = default) => Task.FromResult(Services.Count);
 
@@ -100,8 +104,9 @@ internal sealed class InMemoryContentBlockRepository : IContentBlockRepository
     public Task<ContentBlock?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         Task.FromResult(Blocks.FirstOrDefault(b => b.Id == id));
 
-    public Task<IReadOnlyList<ContentBlock>> ListAsync(BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default) =>
+    public Task<IReadOnlyList<ContentBlock>> ListAsync(SiteLanguage? language, BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default) =>
         Task.FromResult<IReadOnlyList<ContentBlock>>(Blocks
+            .Where(b => language is null || b.Language == language)
             .Where(b => kind is null || b.Kind == kind)
             .Where(b => !publishedOnly || b.IsPublished)
             .ToList());

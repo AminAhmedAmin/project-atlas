@@ -18,6 +18,7 @@ internal sealed class ContentBlockConfiguration : IEntityTypeConfiguration<Conte
         builder.Property(b => b.Text).HasMaxLength(ContentBlock.TextMaxLength);
         builder.Property(b => b.ImageUrl).HasMaxLength(ContentBlock.ImageUrlMaxLength);
 
-        builder.HasIndex(b => new { b.Kind, b.IsPublished, b.DisplayOrder });
+        builder.Property(b => b.Language).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
+        builder.HasIndex(b => new { b.Language, b.Kind, b.IsPublished, b.DisplayOrder });
     }
 }

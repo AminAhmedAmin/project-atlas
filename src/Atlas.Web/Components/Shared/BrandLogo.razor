@@ -1,24 +1,29 @@
-<a href="/" class="brand-logo" aria-label="@Settings.CompanyName home">
+@{ var name = Settings.CompanyNameFor(Language); }
+<a href="@Href" class="brand-logo" aria-label="@name">
     @if (!string.IsNullOrWhiteSpace(Settings.LogoUrl))
     {
-        <img src="@Settings.LogoUrl" alt="@Settings.CompanyName" height="@Height" />
+        <img src="@Settings.LogoUrl" alt="@name" height="@Height" />
     }
     else
     {
-        <span class="brand-mark" style="background:@Settings.PrimaryColor">@Initial</span>
+        <span class="brand-mark" style="background:@Settings.PrimaryColor">@Initial(name)</span>
     }
     @if (ShowName)
     {
-        <span class="brand-name">@Settings.CompanyName</span>
+        <span class="brand-name">@name</span>
     }
 </a>
 
 @code {
     [Parameter, EditorRequired] public SiteSettingsDto Settings { get; set; } = default!;
 
+    [Parameter] public SiteLanguage Language { get; set; } = SiteLanguage.English;
+
     [Parameter] public bool ShowName { get; set; } = true;
 
     [Parameter] public int Height { get; set; } = 36;
 
-    private string Initial => string.IsNullOrEmpty(Settings.CompanyName) ? "?" : Settings.CompanyName[..1].ToUpperInvariant();
+    [Parameter] public string Href { get; set; } = "/";
+
+    private static string Initial(string name) => string.IsNullOrEmpty(name) ? "?" : name[..1].ToUpperInvariant();
 }

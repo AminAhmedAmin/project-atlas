@@ -13,7 +13,8 @@ internal sealed class PageContentConfiguration : IEntityTypeConfiguration<PageCo
         builder.Property(p => p.Id).ValueGeneratedNever();
 
         builder.Property(p => p.Key).HasConversion<string>().HasMaxLength(32).IsUnicode(false);
-        builder.HasIndex(p => p.Key).IsUnique();
+        builder.Property(p => p.Language).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
+        builder.HasIndex(p => new { p.Key, p.Language }).IsUnique();
 
         builder.Property(p => p.Title).HasMaxLength(PageContent.TitleMaxLength).IsRequired();
         builder.Property(p => p.Subtitle).HasMaxLength(PageContent.SubtitleMaxLength);

@@ -20,6 +20,8 @@ public sealed class ContentBlock : Entity
 
     public BlockKind Kind { get; private set; }
 
+    public SiteLanguage Language { get; private set; } = SiteLanguage.English;
+
     public string Title { get; private set; }
 
     public string? Subtitle { get; private set; }
@@ -37,14 +39,14 @@ public sealed class ContentBlock : Entity
     /// <summary>Whether <see cref="Text"/> is required for the given kind.</summary>
     public static bool RequiresText(BlockKind kind) => kind is not BlockKind.ClientLogo;
 
-    public static ContentBlock Create(BlockKind kind, ContentBlockFields fields, DateTime nowUtc)
+    public static ContentBlock Create(BlockKind kind, ContentBlockFields fields, DateTime nowUtc, SiteLanguage language = SiteLanguage.English)
     {
         if (!Enum.IsDefined(kind))
         {
             throw new DomainException($"Unknown block kind '{kind}'.");
         }
 
-        var block = new ContentBlock { Kind = kind };
+        var block = new ContentBlock { Kind = kind, Language = Languages.Ensure(language) };
         block.Update(fields, nowUtc);
         return block;
     }

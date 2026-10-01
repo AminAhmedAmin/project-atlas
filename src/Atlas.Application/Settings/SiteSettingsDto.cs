@@ -1,3 +1,4 @@
+using Atlas.Domain.Common;
 using Atlas.Domain.Settings;
 
 namespace Atlas.Application.Settings;
@@ -8,7 +9,18 @@ public sealed record SiteSettingsDto(
     string? LogoUrl,
     string PrimaryColor,
     string? ContactEmail,
-    DateTime? UpdatedAtUtc);
+    DateTime? UpdatedAtUtc,
+    string? ArabicCompanyName = null,
+    string? ArabicTagline = null)
+{
+    /// <summary>Company name for the given language, falling back to the English name.</summary>
+    public string CompanyNameFor(SiteLanguage language) =>
+        language == SiteLanguage.Arabic && !string.IsNullOrWhiteSpace(ArabicCompanyName) ? ArabicCompanyName : CompanyName;
+
+    /// <summary>Tagline for the given language, falling back to the English tagline.</summary>
+    public string? TaglineFor(SiteLanguage language) =>
+        language == SiteLanguage.Arabic && !string.IsNullOrWhiteSpace(ArabicTagline) ? ArabicTagline : Tagline;
+}
 
 internal static class SiteSettingsMapping
 {
@@ -18,7 +30,9 @@ internal static class SiteSettingsMapping
         settings.LogoUrl,
         settings.PrimaryColor.Value,
         settings.ContactEmail?.Value,
-        settings.UpdatedAtUtc);
+        settings.UpdatedAtUtc,
+        settings.ArabicCompanyName,
+        settings.ArabicTagline);
 
     public static SiteSettingsDto ToDto(this BrandingDefaults defaults) => new(
         defaults.CompanyName,
@@ -26,5 +40,7 @@ internal static class SiteSettingsMapping
         defaults.LogoUrl,
         defaults.PrimaryColor,
         defaults.ContactEmail,
-        null);
+        null,
+        defaults.ArabicCompanyName,
+        defaults.ArabicTagline);
 }

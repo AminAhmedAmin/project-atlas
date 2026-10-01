@@ -1,3 +1,4 @@
+using Atlas.Domain.Common;
 using Atlas.Domain.Content;
 
 namespace Atlas.Application.Content;
@@ -10,7 +11,8 @@ public sealed record ContentBlockDto(
     string? Text,
     string? ImageUrl,
     int DisplayOrder,
-    bool IsPublished);
+    bool IsPublished,
+    SiteLanguage Language);
 
 internal static class ContentBlockMapping
 {
@@ -22,5 +24,6 @@ internal static class ContentBlockMapping
         block.Text,
         block.ImageUrl,
         block.DisplayOrder,
-        block.IsPublished);
+        block.IsPublished,
+        block.Language);
 }

@@ -1,8 +1,10 @@
+@inherits PublicComponentBase
+
 @if (Items.Count > 0)
 {
     <section class="section section-alt">
         <MudContainer MaxWidth="MaxWidth.Large">
-            <SectionHeading Eyebrow="How we work" Title="From idea to launch, step by step" Lead="@Lead" Centered="true" />
+            <SectionHeading Eyebrow="@L("How we work")" Title="@L("From idea to launch, step by step")" Lead="@Lead" Centered="true" />
             <ol class="process">
                 @for (var i = 0; i < Items.Count; i++)
                 {

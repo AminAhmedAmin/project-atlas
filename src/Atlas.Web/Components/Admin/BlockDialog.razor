@@ -3,10 +3,10 @@
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">@(Block is null ? $"Add {Info.Singular}" : $"Edit {Info.Singular}")</MudText>
+        <MudText Typo="Typo.h6">@(Block is null ? $"Add {Info.Singular}" : $"Edit {Info.Singular}") (@Language)</MudText>
     </TitleContent>
     <DialogContent>
-        <MudGrid Spacing="3">
+        <MudGrid Spacing="3" dir="@SiteLanguages.Direction(Language)">
             <MudItem xs="12" sm="9">
                 <MudTextField @bind-Value="_model.Title" Label="@Info.TitleLabel" Variant="Variant.Outlined" Required="true"
                               HelperText="@Info.TitleHelp" MaxLength="ContentBlock.TitleMaxLength"
@@ -90,6 +90,8 @@
 
     [Parameter] public int NextDisplayOrder { get; set; }
 
+    [Parameter] public SiteLanguage Language { get; set; } = SiteLanguage.English;
+
     private BlockKindInfo Info => BlockKinds.For(Kind);
 
     protected override void OnInitialized()
@@ -150,7 +152,7 @@
         try
         {
             var result = await UseCases.SendAsync<SaveContentBlockCommand, ContentBlockDto>(new(
-                Block?.Id, Kind, _model.Title, _model.Subtitle, _model.Text, _model.ImageUrl, _model.DisplayOrder, _model.IsPublished));
+                Block?.Id, Kind, _model.Title, _model.Subtitle, _model.Text, _model.ImageUrl, _model.DisplayOrder, _model.IsPublished, Language));
 
             _errors.Set(result);
             if (result.IsSuccess)

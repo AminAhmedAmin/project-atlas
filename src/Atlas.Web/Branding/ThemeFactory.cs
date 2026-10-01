@@ -4,7 +4,8 @@ namespace Atlas.Web.Branding;
 
 public static class ThemeFactory
 {
-    private static readonly string[] FontStack = ["Inter", "Segoe UI", "Helvetica Neue", "Arial", "sans-serif"];
+    // Inter has no Arabic glyphs; browsers fall back per character to IBM Plex Sans Arabic.
+    private static readonly string[] FontStack = ["Inter", "IBM Plex Sans Arabic", "Segoe UI", "Tahoma", "Helvetica Neue", "Arial", "sans-serif"];
 
     public static MudTheme Create(string primaryColor) => new()
     {

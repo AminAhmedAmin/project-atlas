@@ -2,15 +2,23 @@
 
 <PageTitle>Pages | Admin</PageTitle>
 
-<AdminPageHeader Title="Pages" Description="Edit the text and SEO description of each public page." />
+<AdminPageHeader Title="Pages" Description="Edit the text and SEO description of each public page, in English and Arabic.">
+    <Actions>
+        <LanguageSwitch @bind-Value="_language" />
+    </Actions>
+</AdminPageHeader>
 
-<MudPaper Outlined="true" Elevation="0">
+<MudPaper Outlined="true" Elevation="0" @key="_language">
     <MudTabs Elevation="0" ApplyEffectsToContainer="true" TabPanelsClass="pa-6" KeepPanelsAlive="true">
         @foreach (var key in Enum.GetValues<PageKey>())
         {
             <MudTabPanel Text="@key.ToString()">
-                <ContentEditor Key="key" />
+                <ContentEditor Key="key" Language="_language" />
             </MudTabPanel>
         }
     </MudTabs>
 </MudPaper>
+
+@code {
+    private SiteLanguage _language = SiteLanguage.English;
+}

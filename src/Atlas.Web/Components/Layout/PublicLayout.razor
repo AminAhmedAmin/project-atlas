@@ -1,6 +1,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject BrandingService Branding
+@inject NavigationManager Navigation
 
 <MudThemeProvider Theme="_theme" />
 <MudPopoverProvider />
@@ -9,73 +10,82 @@
 
 @if (_settings is not null)
 {
-    <MudLayout Class="public-layout">
-        <MudAppBar Elevation="0" Class="public-appbar">
-            <MudContainer MaxWidth="MaxWidth.Large" Class="d-flex align-center px-0">
-                <BrandLogo Settings="_settings" />
-                <MudSpacer />
-                <nav class="public-nav d-none d-md-flex" aria-label="Main">
+    <MudRTLProvider RightToLeft="@SiteLanguages.IsRightToLeft(Lang)">
+        <MudLayout Class="public-layout">
+            <MudAppBar Elevation="0" Class="public-appbar">
+                <MudContainer MaxWidth="MaxWidth.Large" Class="d-flex align-center px-0">
+                    <BrandLogo Settings="_settings" Language="Lang" Href="@Href("/")" />
+                    <MudSpacer />
+                    <nav class="public-nav d-none d-md-flex" aria-label="@L("Main")">
+                        @foreach (var link in Links)
+                        {
+                            <NavLink class="public-nav-link" href="@Href(link.Path)" Match="@link.Match">@L(link.Label)</NavLink>
+                        }
+                        <a class="public-nav-link lang-switch" href="@SwitchHref" target="_top" hreflang="@SiteLanguages.Code(OtherLang)" lang="@SiteLanguages.Code(OtherLang)">
+                            <MudIcon Icon="@Icons.Material.Outlined.Language" Size="Size.Small" /> @OtherLangName
+                        </a>
+                        <MudButton Href="@Href("/contact")" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" Class="ms-3">
+                            @L("Get in touch")
+                        </MudButton>
+                    </nav>
+                    <a class="public-nav-link lang-switch d-md-none" href="@SwitchHref" target="_top" lang="@SiteLanguages.Code(OtherLang)">@OtherLangName</a>
+                    <MudIconButton Icon="@Icons.Material.Filled.Menu" Class="d-md-none" aria-label="@L("Open menu")"
+                                   OnClick="() => _drawerOpen = true" />
+                </MudContainer>
+            </MudAppBar>
+
+            <MudDrawer @bind-Open="_drawerOpen" Anchor="Anchor.End" Variant="@DrawerVariant.Temporary" Elevation="2">
+                <MudDrawerHeader>
+                    <BrandLogo Settings="_settings" Language="Lang" Href="@Href("/")" />
+                </MudDrawerHeader>
+                <MudNavMenu>
                     @foreach (var link in Links)
                     {
-                        <NavLink class="public-nav-link" href="@link.Href" Match="@link.Match">@link.Label</NavLink>
+                        <MudNavLink Href="@Href(link.Path)" Match="@link.Match" OnClick="() => _drawerOpen = false">@L(link.Label)</MudNavLink>
                     }
-                    <MudButton Href="/contact" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" Class="ml-3">
-                        Get in touch
-                    </MudButton>
-                </nav>
-                <MudIconButton Icon="@Icons.Material.Filled.Menu" Class="d-md-none" aria-label="Open menu"
-                               OnClick="() => _drawerOpen = true" />
-            </MudContainer>
-        </MudAppBar>
+                </MudNavMenu>
+            </MudDrawer>
 
-        <MudDrawer @bind-Open="_drawerOpen" Anchor="Anchor.End" Variant="@DrawerVariant.Temporary" Elevation="2">
-            <MudDrawerHeader>
-                <BrandLogo Settings="_settings" />
-            </MudDrawerHeader>
-            <MudNavMenu>
-                @foreach (var link in Links)
-                {
-                    <MudNavLink Href="@link.Href" Match="@link.Match" OnClick="() => _drawerOpen = false">@link.Label</MudNavLink>
-                }
-            </MudNavMenu>
-        </MudDrawer>
+            <MudMainContent Class="public-main">
+                @Body
 
-        <MudMainContent Class="public-main">
-            @Body
-
-            <footer class="public-footer">
-                <MudContainer MaxWidth="MaxWidth.Large">
-                    <div class="footer-grid">
-                        <div>
-                            <BrandLogo Settings="_settings" />
-                            @if (!string.IsNullOrWhiteSpace(_settings.Tagline))
+                <footer class="public-footer">
+                    <MudContainer MaxWidth="MaxWidth.Large">
+                        <div class="footer-grid">
+                            <div>
+                                <BrandLogo Settings="_settings" Language="Lang" Href="@Href("/")" />
+                                @if (!string.IsNullOrWhiteSpace(_settings.TaglineFor(Lang)))
+                                {
+                                    <MudText Typo="Typo.body2" Class="mt-3 text-secondary">@_settings.TaglineFor(Lang)</MudText>
+                                }
+                            </div>
+                            <nav class="footer-links" aria-label="@L("Footer")">
+                                @foreach (var link in Links)
+                                {
+                                    <a href="@Href(link.Path)">@L(link.Label)</a>
+                                }
+                            </nav>
+                            @if (!string.IsNullOrWhiteSpace(_settings.ContactEmail))
                             {
-                                <MudText Typo="Typo.body2" Class="mt-3 text-secondary">@_settings.Tagline</MudText>
+                                <div>
+                                    <MudText Typo="Typo.subtitle2">@L("Contact")</MudText>
+                                    <a href="mailto:@_settings.ContactEmail" dir="ltr">@_settings.ContactEmail</a>
+                                </div>
                             }
                         </div>
-                        <nav class="footer-links" aria-label="Footer">
-                            @foreach (var link in Links)
-                            {
-                                <a href="@link.Href">@link.Label</a>
-                            }
-                        </nav>
-                        @if (!string.IsNullOrWhiteSpace(_settings.ContactEmail))
-                        {
-                            <div>
-                                <MudText Typo="Typo.subtitle2">Contact</MudText>
-                                <a href="mailto:@_settings.ContactEmail">@_settings.ContactEmail</a>
+                        <MudDivider Class="my-6" />
+                        <div class="d-flex flex-wrap justify-space-between gap-2">
+                            <MudText Typo="Typo.caption">&copy; @DateTime.UtcNow.Year @_settings.CompanyNameFor(Lang). @L("All rights reserved.")</MudText>
+                            <div class="d-flex gap-4">
+                                <a class="footer-admin-link" href="@SwitchHref" target="_top" lang="@SiteLanguages.Code(OtherLang)">@OtherLangName</a>
+                                <a class="footer-admin-link" href="/admin" target="_top">@L("Admin")</a>
                             </div>
-                        }
-                    </div>
-                    <MudDivider Class="my-6" />
-                    <div class="d-flex flex-wrap justify-space-between gap-2">
-                        <MudText Typo="Typo.caption">&copy; @DateTime.UtcNow.Year @_settings.CompanyName. All rights reserved.</MudText>
-                        <a class="footer-admin-link" href="/admin">Admin</a>
-                    </div>
-                </MudContainer>
-            </footer>
-        </MudMainContent>
-    </MudLayout>
+                        </div>
+                    </MudContainer>
+                </footer>
+            </MudMainContent>
+        </MudLayout>
+    </MudRTLProvider>
 }
 
 <div id="blazor-error-ui" data-nosnippet>
@@ -85,7 +95,7 @@
 </div>
 
 @code {
-    private static readonly (string Href, string Label, NavLinkMatch Match)[] Links =
+    private static readonly (string Path, string Label, NavLinkMatch Match)[] Links =
     [
         ("/", "Home", NavLinkMatch.All),
         ("/services", "Services", NavLinkMatch.Prefix),
@@ -97,11 +107,27 @@
     private MudTheme _theme = new();
     private bool _drawerOpen;
 
+    private SiteLanguage Lang => SiteLanguages.FromUri(Navigation.Uri);
+
+    private SiteLanguage OtherLang => SiteLanguages.Other(Lang);
+
+    private string OtherLangName => OtherLang == SiteLanguage.Arabic ? "العربية" : "English";
+
+    // Switching language reloads the page (target="_top") so the document direction and language change too.
+    private string SwitchHref => SiteLanguages.Localize(SiteLanguages.NeutralPath(new Uri(Navigation.Uri).AbsolutePath), OtherLang);
+
+    private string L(string english) => UiText.Get(Lang, english);
+
+    private string Href(string neutralPath) => SiteLanguages.Localize(neutralPath, Lang);
+
     protected override async Task OnInitializedAsync()
     {
         Apply(await Branding.GetAsync());
         Branding.Changed += OnBrandingChanged;
+        Navigation.LocationChanged += OnLocationChanged;
     }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
 
     private void OnBrandingChanged(SiteSettingsDto settings) => _ = InvokeAsync(() =>
     {
@@ -119,5 +145,9 @@
         _settings = settings;
     }
 
-    public void Dispose() => Branding.Changed -= OnBrandingChanged;
+    public void Dispose()
+    {
+        Branding.Changed -= OnBrandingChanged;
+        Navigation.LocationChanged -= OnLocationChanged;
+    }
 }

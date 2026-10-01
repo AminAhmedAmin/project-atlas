@@ -16,6 +16,8 @@ internal sealed class SiteSettingsConfiguration : IEntityTypeConfiguration<SiteS
         builder.Property(s => s.CompanyName).HasMaxLength(SiteSettings.CompanyNameMaxLength).IsRequired();
         builder.Property(s => s.Tagline).HasMaxLength(SiteSettings.TaglineMaxLength);
         builder.Property(s => s.LogoUrl).HasMaxLength(SiteSettings.LogoUrlMaxLength);
+        builder.Property(s => s.ArabicCompanyName).HasMaxLength(SiteSettings.CompanyNameMaxLength);
+        builder.Property(s => s.ArabicTagline).HasMaxLength(SiteSettings.TaglineMaxLength);
 
         builder.Property(s => s.PrimaryColor)
             .HasConversion(c => c.Value, v => HexColor.Create(v))

@@ -1,4 +1,4 @@
-@inject NavigationManager Navigation
+@inherits PublicComponentBase
 
 <PageTitle>@FullTitle</PageTitle>
 <HeadContent>
@@ -11,7 +11,12 @@
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="@CompanyName" />
     <meta property="og:url" content="@CanonicalUrl" />
+    <meta property="og:locale" content="@(IsArabic ? "ar_SA" : "en_US")" />
     <link rel="canonical" href="@CanonicalUrl" />
+    @* Tell search engines about the other language version of this page. *@
+    <link rel="alternate" hreflang="en" href="@UrlFor(SiteLanguage.English)" />
+    <link rel="alternate" hreflang="ar" href="@UrlFor(SiteLanguage.Arabic)" />
+    <link rel="alternate" hreflang="x-default" href="@UrlFor(SiteLanguage.English)" />
 </HeadContent>
 
 @code {
@@ -29,4 +34,11 @@
         : $"{Title} | {CompanyName}";
 
     private string CanonicalUrl => Navigation.Uri.Split('?', '#')[0];
+
+    private string UrlFor(SiteLanguage language)
+    {
+        var uri = new Uri(Navigation.Uri);
+        var path = SiteLanguages.Localize(SiteLanguages.NeutralPath(uri.AbsolutePath), language);
+        return $"{uri.Scheme}://{uri.Authority}{path}";
+    }
 }

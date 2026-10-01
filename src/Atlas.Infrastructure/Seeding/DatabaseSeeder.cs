@@ -90,51 +90,53 @@ public sealed partial class DatabaseSeeder(
 
     private async Task EnsureStarterContentAsync(CancellationToken cancellationToken)
     {
-        // Starter content is only written once, on first run, so admins can delete it freely afterwards.
-        if (await db.SiteSettings.AnyAsync(cancellationToken))
-        {
-            return;
-        }
-
         var now = timeProvider.GetUtcNow().UtcDateTime;
-        var color = HexColor.TryCreate(brandingDefaults.PrimaryColor, out var parsed) ? parsed : HexColor.Create("#1e63e9");
-        EmailAddress.TryCreate(brandingDefaults.ContactEmail, out var contactEmail);
 
-        var settings = SiteSettings.Create(brandingDefaults.CompanyName, brandingDefaults.Tagline, color, contactEmail, now);
-        if (!string.IsNullOrWhiteSpace(brandingDefaults.LogoUrl))
+        if (!await db.SiteSettings.AnyAsync(cancellationToken))
         {
-            settings.SetLogo(brandingDefaults.LogoUrl, now);
-        }
+            var color = HexColor.TryCreate(brandingDefaults.PrimaryColor, out var parsed) ? parsed : HexColor.Create("#1e63e9");
+            EmailAddress.TryCreate(brandingDefaults.ContactEmail, out var contactEmail);
 
-        db.SiteSettings.Add(settings);
-
-        foreach (var key in Enum.GetValues<PageKey>())
-        {
-            if (!await db.PageContents.AnyAsync(p => p.Key == key, cancellationToken))
+            var settings = SiteSettings.Create(brandingDefaults.CompanyName, brandingDefaults.Tagline, color, contactEmail, now);
+            settings.UpdateArabic(brandingDefaults.ArabicCompanyName, brandingDefaults.ArabicTagline, now);
+            if (!string.IsNullOrWhiteSpace(brandingDefaults.LogoUrl))
             {
-                db.PageContents.Add(PageContent.Create(key, DefaultContent.For(key), now));
+                settings.SetLogo(brandingDefaults.LogoUrl, now);
             }
+
+            db.SiteSettings.Add(settings);
         }
 
-        if (!await db.Services.AnyAsync(cancellationToken))
+        // Starter content is written once per language: pages cannot be deleted from the dashboard,
+        // so "no pages in this language" reliably means the language has never been seeded.
+        // Admins can then delete starter services or blocks freely without them coming back.
+        foreach (var language in Enum.GetValues<SiteLanguage>())
         {
+            if (await db.PageContents.AnyAsync(p => p.Language == language, cancellationToken))
+            {
+                continue;
+            }
+
+            foreach (var key in Enum.GetValues<PageKey>())
+            {
+                db.PageContents.Add(PageContent.Create(key, DefaultContent.For(key, language), now, language));
+            }
+
             var order = 0;
-            foreach (var (title, summary, icon) in DefaultContent.Services)
+            foreach (var (title, summary, icon) in DefaultContent.ServicesFor(language))
             {
-                db.Services.Add(Service.Create(title, summary, null, icon, order++, isPublished: true, now));
+                db.Services.Add(Service.Create(title, summary, null, icon, order++, isPublished: true, now, language));
             }
-        }
 
-        if (!await db.ContentBlocks.AnyAsync(cancellationToken))
-        {
-            foreach (var (kind, fields) in DefaultContent.Blocks)
+            foreach (var (kind, fields) in DefaultContent.BlocksFor(language))
             {
-                db.ContentBlocks.Add(ContentBlock.Create(kind, fields, now));
+                db.ContentBlocks.Add(ContentBlock.Create(kind, fields, now, language));
             }
+
+            LogLanguageSeeded(logger, language);
         }
 
         await db.SaveChangesAsync(cancellationToken);
-        LogStarterContentSeeded(logger);
     }
 
     private static void ThrowIfFailed(IdentityResult result, string action)
@@ -158,6 +160,6 @@ public sealed partial class DatabaseSeeder(
     [LoggerMessage(Level = LogLevel.Information, Message = "Created initial admin user {Email}")]
     private static partial void LogAdminCreated(ILogger logger, string email);
 
-    [LoggerMessage(Level = LogLevel.Information, Message = "Seeded default settings, page content, services and home page blocks")]
-    private static partial void LogStarterContentSeeded(ILogger logger);
+    [LoggerMessage(Level = LogLevel.Information, Message = "Seeded starter pages, services and home page blocks for {Language}")]
+    private static partial void LogLanguageSeeded(ILogger logger, SiteLanguage language);
 }

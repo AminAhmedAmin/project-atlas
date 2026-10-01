@@ -12,6 +12,10 @@ public sealed class BrandingDefaults
 
     public string? Tagline { get; set; }
 
+    public string? ArabicCompanyName { get; set; }
+
+    public string? ArabicTagline { get; set; }
+
     public string PrimaryColor { get; set; } = "#1e63e9";
 
     public string? ContactEmail { get; set; }

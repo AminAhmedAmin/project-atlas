@@ -11,29 +11,29 @@ else
     <EditForm Model="_model" OnSubmit="SaveAsync">
         <MudGrid Spacing="3">
             <MudItem xs="12">
-                <MudTextField @bind-Value="_model.Title" Label="Title" Variant="Variant.Outlined" Required="true"
+                <MudTextField @bind-Value="_model.Title" Label="Title" dir="@SiteLanguages.Direction(Language)" Variant="Variant.Outlined" Required="true"
                               MaxLength="PageContent.TitleMaxLength" Error="_errors.Has(nameof(_model.Title))" ErrorText="@_errors.For(nameof(_model.Title))" />
             </MudItem>
             <MudItem xs="12">
-                <MudTextField @bind-Value="_model.Subtitle" Label="Subtitle" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto"
+                <MudTextField @bind-Value="_model.Subtitle" Label="Subtitle" dir="@SiteLanguages.Direction(Language)" Variant="Variant.Outlined" Lines="2" Sizing="InputSizing.Auto"
                               MaxLength="PageContent.SubtitleMaxLength" Error="_errors.Has(nameof(_model.Subtitle))" ErrorText="@_errors.For(nameof(_model.Subtitle))" />
             </MudItem>
             <MudItem xs="12">
-                <MudTextField @bind-Value="_model.Body" Label="Body text" Variant="Variant.Outlined" Lines="8" Sizing="InputSizing.Auto"
+                <MudTextField @bind-Value="_model.Body" Label="Body text" dir="@SiteLanguages.Direction(Language)" Variant="Variant.Outlined" Lines="8" Sizing="InputSizing.Auto"
                               HelperText="Separate paragraphs with a blank line. Use {company} to insert the company name."
                               MaxLength="PageContent.BodyMaxLength" Error="_errors.Has(nameof(_model.Body))" ErrorText="@_errors.For(nameof(_model.Body))" />
             </MudItem>
             <MudItem xs="12" sm="6">
-                <MudTextField @bind-Value="_model.CallToActionText" Label="Button text" Variant="Variant.Outlined"
+                <MudTextField @bind-Value="_model.CallToActionText" Label="Button text" dir="@SiteLanguages.Direction(Language)" Variant="Variant.Outlined"
                               MaxLength="PageContent.CallToActionTextMaxLength" Error="_errors.Has(nameof(_model.CallToActionText))" ErrorText="@_errors.For(nameof(_model.CallToActionText))" />
             </MudItem>
             <MudItem xs="12" sm="6">
                 <MudTextField @bind-Value="_model.CallToActionUrl" Label="Button link" Variant="Variant.Outlined" Placeholder="/contact"
-                              HelperText="A site path such as /contact, or a full https:// link."
+                              HelperText="@(Language == SiteLanguage.Arabic ? "A site path such as /ar/contact, or a full https:// link." : "A site path such as /contact, or a full https:// link.")"
                               MaxLength="PageContent.CallToActionUrlMaxLength" Error="_errors.Has(nameof(_model.CallToActionUrl))" ErrorText="@_errors.For(nameof(_model.CallToActionUrl))" />
             </MudItem>
             <MudItem xs="12">
-                <MudTextField @bind-Value="_model.MetaDescription" Label="Meta description (SEO)" Variant="Variant.Outlined" Lines="2"
+                <MudTextField @bind-Value="_model.MetaDescription" Label="Meta description (SEO)" dir="@SiteLanguages.Direction(Language)" Variant="Variant.Outlined" Lines="2"
                               HelperText="Shown by search engines. Aim for 120–160 characters."
                               MaxLength="PageContent.MetaDescriptionMaxLength" Counter="PageContent.MetaDescriptionMaxLength"
                               Error="_errors.Has(nameof(_model.MetaDescription))" ErrorText="@_errors.For(nameof(_model.MetaDescription))" />
@@ -63,15 +63,13 @@ else
 
     [Parameter, EditorRequired] public PageKey Key { get; set; }
 
-    private string PublicPath => Key switch
-    {
-        PageKey.Home => "/",
-        _ => "/" + Key.ToString().ToLowerInvariant(),
-    };
+    [Parameter] public SiteLanguage Language { get; set; } = SiteLanguage.English;
+
+    private string PublicPath => SiteLanguages.Localize(Key == PageKey.Home ? "/" : "/" + Key.ToString().ToLowerInvariant(), Language);
 
     protected override async Task OnInitializedAsync()
     {
-        var page = await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(Key));
+        var page = await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(Key, Language));
         _updatedAtUtc = page.UpdatedAtUtc;
         _model = new PageModel
         {
@@ -95,13 +93,13 @@ else
         try
         {
             var result = await UseCases.SendAsync<UpdatePageContentCommand, PageContentDto>(new(
-                Key, _model.Title, _model.Subtitle, _model.Body, _model.CallToActionText, _model.CallToActionUrl, _model.MetaDescription));
+                Key, _model.Title, _model.Subtitle, _model.Body, _model.CallToActionText, _model.CallToActionUrl, _model.MetaDescription, Language));
 
             _errors.Set(result);
             if (result.IsSuccess)
             {
                 _updatedAtUtc = result.Value.UpdatedAtUtc;
-                Snackbar.Add($"{Key} page saved.", Severity.Success);
+                Snackbar.Add($"{Key} page ({Language}) saved.", Severity.Success);
             }
             else
             {

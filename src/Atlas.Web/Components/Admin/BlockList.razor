@@ -66,6 +66,8 @@
 
     [Parameter, EditorRequired] public BlockKind Kind { get; set; }
 
+    [Parameter] public SiteLanguage Language { get; set; } = SiteLanguage.English;
+
     private BlockKindInfo Info => BlockKinds.For(Kind);
 
     protected override Task OnInitializedAsync() => LoadAsync();
@@ -73,7 +75,7 @@
     private async Task LoadAsync()
     {
         _loading = true;
-        _blocks = await UseCases.QueryAsync<GetContentBlocksQuery, IReadOnlyList<ContentBlockDto>>(new(Kind, PublishedOnly: false));
+        _blocks = await UseCases.QueryAsync<GetContentBlocksQuery, IReadOnlyList<ContentBlockDto>>(new(Kind, PublishedOnly: false, Language));
         _loading = false;
     }
 
@@ -82,6 +84,7 @@
         var parameters = new DialogParameters<BlockDialog>
         {
             { d => d.Kind, Kind },
+            { d => d.Language, Language },
             { d => d.Block, block },
             { d => d.NextDisplayOrder, _blocks.Count == 0 ? 0 : _blocks.Max(b => b.DisplayOrder) + 1 },
         };

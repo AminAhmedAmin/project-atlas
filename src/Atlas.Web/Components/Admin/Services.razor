@@ -5,8 +5,9 @@
 
 <PageTitle>Services | Admin</PageTitle>
 
-<AdminPageHeader Title="Services" Description="Services and products shown on the website, in display order.">
+<AdminPageHeader Title="Services" Description="Services and products shown on the website, in display order. Each language has its own list.">
     <Actions>
+        <LanguageSwitch Value="_language" ValueChanged="ChangeLanguageAsync" />
         <MudButton Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" StartIcon="@Icons.Material.Filled.Add" OnClick="() => EditAsync(null)">
             Add service
         </MudButton>
@@ -58,6 +59,7 @@
 
 @code {
     private IReadOnlyList<ServiceDto> _services = [];
+    private SiteLanguage _language = SiteLanguage.English;
     private bool _loading = true;
 
     protected override Task OnInitializedAsync() => LoadAsync();
@@ -65,7 +67,7 @@
     private async Task LoadAsync()
     {
         _loading = true;
-        _services = await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: false));
+        _services = await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: false, _language));
         _loading = false;
     }
 
@@ -74,6 +76,7 @@
         var parameters = new DialogParameters<ServiceDialog>
         {
             { d => d.Service, service },
+            { d => d.Language, _language },
             { d => d.NextDisplayOrder, _services.Count == 0 ? 0 : _services.Max(s => s.DisplayOrder) + 1 },
         };
         var dialog = await Dialogs.ShowAsync<ServiceDialog>(null, parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
@@ -83,6 +86,12 @@
             Snackbar.Add("Service saved.", Severity.Success);
             await LoadAsync();
         }
+    }
+
+    private async Task ChangeLanguageAsync(SiteLanguage language)
+    {
+        _language = language;
+        await LoadAsync();
     }
 
     private async Task DeleteAsync(ServiceDto service)

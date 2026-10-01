@@ -21,6 +21,12 @@ public sealed class SiteSettings : Entity
 
     public string? LogoUrl { get; private set; }
 
+    /// <summary>Company name shown on the Arabic site. Falls back to <see cref="CompanyName"/>.</summary>
+    public string? ArabicCompanyName { get; private set; }
+
+    /// <summary>Tagline shown on the Arabic site. Falls back to <see cref="Tagline"/>.</summary>
+    public string? ArabicTagline { get; private set; }
+
     public HexColor PrimaryColor { get; private set; }
 
     public EmailAddress? ContactEmail { get; private set; }
@@ -58,6 +64,13 @@ public sealed class SiteSettings : Entity
     public void SetLogo(string logoUrl, DateTime nowUtc)
     {
         LogoUrl = Guard.Required(logoUrl, "Logo URL", LogoUrlMaxLength);
+        UpdatedAtUtc = Guard.Utc(nowUtc, nameof(nowUtc));
+    }
+
+    public void UpdateArabic(string? arabicCompanyName, string? arabicTagline, DateTime nowUtc)
+    {
+        ArabicCompanyName = Guard.Optional(arabicCompanyName, "Arabic company name", CompanyNameMaxLength);
+        ArabicTagline = Guard.Optional(arabicTagline, "Arabic tagline", TaglineMaxLength);
         UpdatedAtUtc = Guard.Utc(nowUtc, nameof(nowUtc));
     }
 

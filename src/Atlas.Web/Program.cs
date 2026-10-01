@@ -11,6 +11,9 @@ using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.FileProviders;
 using MudBlazor.Services;
+using System.Text.Encodings.Web;
+using System.Text.Unicode;
+using Microsoft.Extensions.WebEncoders;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -52,6 +55,10 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
     options.KnownIPNetworks.Clear();
     options.KnownProxies.Clear();
 });
+
+// Emit Arabic (and other non-Latin) text as-is instead of &#x...; escapes; it is still HTML-encoded safely.
+builder.Services.Configure<WebEncoderOptions>(options =>
+    options.TextEncoderSettings = new TextEncoderSettings(UnicodeRanges.All));
 
 builder.Services.AddMudServices();
 builder.Services.AddApplication();

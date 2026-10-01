@@ -1,15 +1,15 @@
 @using System.Text.Json
+@inherits PublicComponentBase
 
 @if (Items.Count > 0)
 {
-    <HeadContent>
-        @* FAQPage structured data lets search engines show these answers directly in results. *@
-        <script type="application/ld+json">@((MarkupString)StructuredData)</script>
-    </HeadContent>
+    @* FAQPage structured data lets search engines show these answers directly in results. It is emitted in the
+       body on purpose: a second HeadContent on the page would replace the SEO tags rendered by SeoHead. *@
+    @((MarkupString)$"<script type=\"application/ld+json\">{StructuredData}</script>")
 
     <section class="section">
         <MudContainer MaxWidth="MaxWidth.Medium">
-            <SectionHeading Eyebrow="FAQ" Title="Frequently asked questions" Centered="true" />
+            <SectionHeading Eyebrow="@L("FAQ")" Title="@L("Frequently asked questions")" Centered="true" />
             <MudExpansionPanels Elevation="0" Class="faq" MultiExpansion="false">
                 @foreach (var faq in Items)
                 {

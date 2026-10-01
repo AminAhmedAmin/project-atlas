@@ -1,5 +1,6 @@
 using Atlas.Application.Abstractions;
 using Atlas.Application.Common;
+using Atlas.Domain.Common;
 using Atlas.Domain.Contact;
 using Atlas.Domain.Content;
 using Atlas.Domain.Settings;
@@ -17,8 +18,8 @@ internal sealed class SiteSettingsRepository(AtlasDbContext db) : ISiteSettingsR
 
 internal sealed class PageContentRepository(AtlasDbContext db) : IPageContentRepository
 {
-    public Task<PageContent?> GetAsync(PageKey key, CancellationToken cancellationToken = default) =>
-        db.PageContents.FirstOrDefaultAsync(p => p.Key == key, cancellationToken);
+    public Task<PageContent?> GetAsync(PageKey key, SiteLanguage language, CancellationToken cancellationToken = default) =>
+        db.PageContents.FirstOrDefaultAsync(p => p.Key == key && p.Language == language, cancellationToken);
 
     public void Add(PageContent page) => db.PageContents.Add(page);
 }
@@ -28,9 +29,14 @@ internal sealed class ServiceRepository(AtlasDbContext db) : IServiceRepository
     public Task<Service?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         db.Services.FirstOrDefaultAsync(s => s.Id == id, cancellationToken);
 
-    public async Task<IReadOnlyList<Service>> ListAsync(bool publishedOnly, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<Service>> ListAsync(SiteLanguage? language, bool publishedOnly, CancellationToken cancellationToken = default)
     {
         var query = db.Services.AsNoTracking();
+        if (language is { } lang)
+        {
+            query = query.Where(s => s.Language == lang);
+        }
+
         if (publishedOnly)
         {
             query = query.Where(s => s.IsPublished);
@@ -52,9 +58,14 @@ internal sealed class ContentBlockRepository(AtlasDbContext db) : IContentBlockR
     public Task<ContentBlock?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default) =>
         db.ContentBlocks.FirstOrDefaultAsync(b => b.Id == id, cancellationToken);
 
-    public async Task<IReadOnlyList<ContentBlock>> ListAsync(BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default)
+    public async Task<IReadOnlyList<ContentBlock>> ListAsync(SiteLanguage? language, BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default)
     {
         var query = db.ContentBlocks.AsNoTracking();
+        if (language is { } lang)
+        {
+            query = query.Where(b => b.Language == lang);
+        }
+
         if (kind is { } k)
         {
             query = query.Where(b => b.Kind == k);

@@ -93,7 +93,7 @@ public sealed class ContentBlockHandlerTests
     [Fact]
     public void Default_blocks_are_valid_and_hide_unverifiable_claims()
     {
-        foreach (var (kind, fields) in DefaultContent.Blocks)
+        foreach (var (kind, fields) in Enum.GetValues<Domain.Common.SiteLanguage>().SelectMany(DefaultContent.BlocksFor))
         {
             var block = ContentBlock.Create(kind, fields, TestData.Now.UtcDateTime);
             if (kind is BlockKind.Testimonial or BlockKind.ClientLogo)

@@ -10,5 +10,6 @@
     <Project Path="tests/Atlas.Architecture.Tests/Atlas.Architecture.Tests.csproj" />
     <Project Path="tests/Atlas.Domain.Tests/Atlas.Domain.Tests.csproj" />
     <Project Path="tests/Atlas.Infrastructure.Tests/Atlas.Infrastructure.Tests.csproj" />
+    <Project Path="tests/Atlas.Web.Tests/Atlas.Web.Tests.csproj" />
   </Folder>
 </Solution>

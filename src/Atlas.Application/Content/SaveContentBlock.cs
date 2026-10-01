@@ -14,7 +14,8 @@ public sealed record SaveContentBlockCommand(
     string? Text,
     string? ImageUrl,
     int DisplayOrder,
-    bool IsPublished)
+    bool IsPublished,
+    SiteLanguage Language = SiteLanguage.English)
 {
     public ContentBlockFields ToFields() => new(Title, Subtitle, Text, ImageUrl, DisplayOrder, IsPublished);
 }
@@ -25,6 +26,7 @@ public sealed class SaveContentBlockValidator : IValidator<SaveContentBlockComma
     {
         var errors = new ValidationErrors()
             .Must(Enum.IsDefined(instance.Kind), nameof(instance.Kind), "Unknown block type.")
+            .Must(Enum.IsDefined(instance.Language), nameof(instance.Language), "Unknown language.")
             .Required(instance.Title, nameof(instance.Title), TitleLabel(instance.Kind), ContentBlock.TitleMaxLength)
             .Optional(instance.Subtitle, nameof(instance.Subtitle), "Subtitle", ContentBlock.SubtitleMaxLength)
             .Optional(instance.ImageUrl, nameof(instance.ImageUrl), "Image", ContentBlock.ImageUrlMaxLength)
@@ -78,7 +80,7 @@ public sealed class SaveContentBlockHandler(
             if (command.Id is { } id)
             {
                 var existing = await repository.GetByIdAsync(id, cancellationToken);
-                if (existing is null || existing.Kind != command.Kind)
+                if (existing is null || existing.Kind != command.Kind || existing.Language != command.Language)
                 {
                     return Result.Failure<ContentBlockDto>(Error.NotFound("Block"));
                 }
@@ -93,7 +95,7 @@ public sealed class SaveContentBlockHandler(
             }
             else
             {
-                block = ContentBlock.Create(command.Kind, command.ToFields(), now);
+                block = ContentBlock.Create(command.Kind, command.ToFields(), now, command.Language);
                 repository.Add(block);
             }
 

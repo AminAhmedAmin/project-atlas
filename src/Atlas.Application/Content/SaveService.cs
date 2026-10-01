@@ -13,7 +13,8 @@ public sealed record SaveServiceCommand(
     string? Description,
     string? Icon,
     int DisplayOrder,
-    bool IsPublished);
+    bool IsPublished,
+    SiteLanguage Language = SiteLanguage.English);
 
 public sealed class SaveServiceValidator : IValidator<SaveServiceCommand>
 {
@@ -23,6 +24,7 @@ public sealed class SaveServiceValidator : IValidator<SaveServiceCommand>
         .Optional(instance.Description, nameof(instance.Description), "Description", Service.DescriptionMaxLength)
         .Optional(instance.Icon, nameof(instance.Icon), "Icon", Service.IconMaxLength)
         .Must(instance.DisplayOrder >= 0, nameof(instance.DisplayOrder), "Display order cannot be negative.")
+        .Must(Enum.IsDefined(instance.Language), nameof(instance.Language), "Unknown language.")
         .Errors;
 }
 
@@ -47,7 +49,7 @@ public sealed class SaveServiceHandler(
             if (command.Id is { } id)
             {
                 var existing = await repository.GetByIdAsync(id, cancellationToken);
-                if (existing is null)
+                if (existing is null || existing.Language != command.Language)
                 {
                     return Result.Failure<ServiceDto>(Error.NotFound("Service"));
                 }
@@ -57,7 +59,7 @@ public sealed class SaveServiceHandler(
             }
             else
             {
-                service = Service.Create(command.Title, command.Summary, command.Description, command.Icon, command.DisplayOrder, command.IsPublished, now);
+                service = Service.Create(command.Title, command.Summary, command.Description, command.Icon, command.DisplayOrder, command.IsPublished, now, command.Language);
                 repository.Add(service);
             }
 

@@ -1,0 +1,26 @@
+<div class="language-switch" role="group" aria-label="Content language">
+    @foreach (var language in Enum.GetValues<SiteLanguage>())
+    {
+        <MudButton Size="Size.Small" DropShadow="false"
+                   Variant="@(language == Value ? Variant.Filled : Variant.Outlined)"
+                   Color="Color.Primary"
+                   OnClick="() => SelectAsync(language)">
+            @(language == SiteLanguage.Arabic ? "العربية" : "English")
+        </MudButton>
+    }
+</div>
+
+@code {
+    [Parameter] public SiteLanguage Value { get; set; } = SiteLanguage.English;
+
+    [Parameter] public EventCallback<SiteLanguage> ValueChanged { get; set; }
+
+    private async Task SelectAsync(SiteLanguage language)
+    {
+        if (language != Value)
+        {
+            Value = language;
+            await ValueChanged.InvokeAsync(language);
+        }
+    }
+}

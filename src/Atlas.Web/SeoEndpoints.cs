@@ -1,5 +1,7 @@
 using System.Text;
 using System.Xml;
+using Atlas.Domain.Common;
+using Atlas.Web.Localization;
 
 namespace Atlas.Web;
 
@@ -18,9 +20,12 @@ internal static class SeoEndpoints
                 writer.WriteStartElement("urlset", "http://www.sitemaps.org/schemas/sitemap/0.9");
                 foreach (var path in PublicPaths)
                 {
-                    writer.WriteStartElement("url");
-                    writer.WriteElementString("loc", baseUrl + path);
-                    writer.WriteEndElement();
+                    foreach (var language in Enum.GetValues<SiteLanguage>())
+                    {
+                        writer.WriteStartElement("url");
+                        writer.WriteElementString("loc", baseUrl + SiteLanguages.Localize(path, language));
+                        writer.WriteEndElement();
+                    }
                 }
 
                 writer.WriteEndElement();

@@ -27,6 +27,8 @@ public sealed class Service : Entity
 
     public int DisplayOrder { get; private set; }
 
+    public SiteLanguage Language { get; private set; } = SiteLanguage.English;
+
     public bool IsPublished { get; private set; }
 
     public DateTime CreatedAtUtc { get; private set; }
@@ -40,9 +42,10 @@ public sealed class Service : Entity
         string? icon,
         int displayOrder,
         bool isPublished,
-        DateTime nowUtc)
+        DateTime nowUtc,
+        SiteLanguage language = SiteLanguage.English)
     {
-        var service = new Service { CreatedAtUtc = Guard.Utc(nowUtc, nameof(nowUtc)) };
+        var service = new Service { CreatedAtUtc = Guard.Utc(nowUtc, nameof(nowUtc)), Language = Languages.Ensure(language) };
         service.Update(title, summary, description, icon, displayOrder, isPublished, nowUtc);
         return service;
     }

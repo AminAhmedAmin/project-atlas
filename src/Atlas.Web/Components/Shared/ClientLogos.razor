@@ -1,8 +1,10 @@
+@inherits PublicComponentBase
+
 @if (Items.Count > 0)
 {
     <section class="clients">
         <MudContainer MaxWidth="MaxWidth.Large">
-            <MudText Typo="Typo.overline" Class="clients-title">Trusted by teams across the Kingdom</MudText>
+            <MudText Typo="Typo.overline" Class="clients-title">@L("Trusted by teams across the Kingdom")</MudText>
             <div class="clients-row">
                 @foreach (var client in Items)
                 {

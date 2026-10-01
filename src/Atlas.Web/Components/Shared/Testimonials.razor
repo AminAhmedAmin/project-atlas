@@ -1,8 +1,10 @@
+@inherits PublicComponentBase
+
 @if (Items.Count > 0)
 {
     <section class="section">
         <MudContainer MaxWidth="MaxWidth.Large">
-            <SectionHeading Eyebrow="Testimonials" Title="What our clients say" Centered="true" />
+            <SectionHeading Eyebrow="@L("Testimonials")" Title="@L("What our clients say")" Centered="true" />
             <div class="testimonials">
                 @foreach (var quote in Items)
                 {

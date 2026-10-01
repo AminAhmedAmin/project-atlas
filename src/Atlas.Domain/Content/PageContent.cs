@@ -19,6 +19,8 @@ public sealed class PageContent : Entity
 
     public PageKey Key { get; private set; }
 
+    public SiteLanguage Language { get; private set; } = SiteLanguage.English;
+
     public string Title { get; private set; }
 
     public string? Subtitle { get; private set; }
@@ -33,14 +35,14 @@ public sealed class PageContent : Entity
 
     public DateTime UpdatedAtUtc { get; private set; }
 
-    public static PageContent Create(PageKey key, PageText text, DateTime nowUtc)
+    public static PageContent Create(PageKey key, PageText text, DateTime nowUtc, SiteLanguage language = SiteLanguage.English)
     {
         if (!Enum.IsDefined(key))
         {
             throw new DomainException($"Unknown page '{key}'.");
         }
 
-        var page = new PageContent { Key = key };
+        var page = new PageContent { Key = key, Language = Languages.Ensure(language) };
         page.Update(text, nowUtc);
         return page;
     }

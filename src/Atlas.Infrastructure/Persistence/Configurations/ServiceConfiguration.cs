@@ -17,6 +17,7 @@ internal sealed class ServiceConfiguration : IEntityTypeConfiguration<Service>
         builder.Property(s => s.Description).HasMaxLength(Service.DescriptionMaxLength);
         builder.Property(s => s.Icon).HasMaxLength(Service.IconMaxLength);
 
-        builder.HasIndex(s => new { s.IsPublished, s.DisplayOrder });
+        builder.Property(s => s.Language).HasConversion<string>().HasMaxLength(16).IsUnicode(false);
+        builder.HasIndex(s => new { s.Language, s.IsPublished, s.DisplayOrder });
     }
 }

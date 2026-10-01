@@ -1,3 +1,4 @@
+using Atlas.Domain.Common;
 using Atlas.Domain.Content;
 
 namespace Atlas.Application.Content;
@@ -10,7 +11,8 @@ public sealed record ServiceDto(
     string? Icon,
     int DisplayOrder,
     bool IsPublished,
-    DateTime UpdatedAtUtc);
+    DateTime UpdatedAtUtc,
+    SiteLanguage Language);
 
 internal static class ServiceMapping
 {
@@ -22,5 +24,6 @@ internal static class ServiceMapping
         service.Icon,
         service.DisplayOrder,
         service.IsPublished,
-        service.UpdatedAtUtc);
+        service.UpdatedAtUtc,
+        service.Language);
 }

@@ -1,4 +1,5 @@
 using Atlas.Application.Common;
+using Atlas.Domain.Common;
 using Atlas.Domain.Contact;
 using Atlas.Domain.Content;
 using Atlas.Domain.Settings;
@@ -19,7 +20,7 @@ public interface ISiteSettingsRepository
 
 public interface IPageContentRepository
 {
-    Task<PageContent?> GetAsync(PageKey key, CancellationToken cancellationToken = default);
+    Task<PageContent?> GetAsync(PageKey key, SiteLanguage language, CancellationToken cancellationToken = default);
 
     void Add(PageContent page);
 }
@@ -28,7 +29,8 @@ public interface IServiceRepository
 {
     Task<Service?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
-    Task<IReadOnlyList<Service>> ListAsync(bool publishedOnly, CancellationToken cancellationToken = default);
+    /// <summary>Services in display order, optionally limited to one language.</summary>
+    Task<IReadOnlyList<Service>> ListAsync(SiteLanguage? language, bool publishedOnly, CancellationToken cancellationToken = default);
 
     Task<int> CountAsync(CancellationToken cancellationToken = default);
 
@@ -42,7 +44,7 @@ public interface IContentBlockRepository
     Task<ContentBlock?> GetByIdAsync(Guid id, CancellationToken cancellationToken = default);
 
     /// <summary>Blocks ordered by kind and display order, optionally filtered.</summary>
-    Task<IReadOnlyList<ContentBlock>> ListAsync(BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<ContentBlock>> ListAsync(SiteLanguage? language, BlockKind? kind, bool publishedOnly, CancellationToken cancellationToken = default);
 
     void Add(ContentBlock block);
 

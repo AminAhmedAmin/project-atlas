@@ -30,6 +30,17 @@ else
                                           MaxLength="Atlas.Domain.Settings.SiteSettings.TaglineMaxLength"
                                           Error="_errors.Has(nameof(_model.Tagline))" ErrorText="@_errors.For(nameof(_model.Tagline))" />
                         </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.ArabicCompanyName" Label="Company name (Arabic)" Variant="Variant.Outlined" dir="rtl"
+                                          HelperText="Shown on the Arabic site. Leave empty to use the English name."
+                                          MaxLength="Atlas.Domain.Settings.SiteSettings.CompanyNameMaxLength"
+                                          Error="_errors.Has(nameof(_model.ArabicCompanyName))" ErrorText="@_errors.For(nameof(_model.ArabicCompanyName))" />
+                        </MudItem>
+                        <MudItem xs="12" sm="6">
+                            <MudTextField @bind-Value="_model.ArabicTagline" Label="Tagline (Arabic)" Variant="Variant.Outlined" dir="rtl"
+                                          MaxLength="Atlas.Domain.Settings.SiteSettings.TaglineMaxLength"
+                                          Error="_errors.Has(nameof(_model.ArabicTagline))" ErrorText="@_errors.For(nameof(_model.ArabicTagline))" />
+                        </MudItem>
                         <MudItem xs="12">
                             <MudTextField @bind-Value="_model.ContactEmail" Label="Contact e-mail" Variant="Variant.Outlined" InputType="InputType.Email"
                                           HelperText="Shown on the website and notified about new contact messages."
@@ -117,6 +128,8 @@ else
             Tagline = _settings.Tagline,
             PrimaryColor = _settings.PrimaryColor,
             ContactEmail = _settings.ContactEmail,
+            ArabicCompanyName = _settings.ArabicCompanyName,
+            ArabicTagline = _settings.ArabicTagline,
         };
     }
 
@@ -131,7 +144,7 @@ else
         try
         {
             var result = await UseCases.SendAsync<UpdateSiteSettingsCommand, SiteSettingsDto>(
-                new(_model.CompanyName, _model.Tagline, _model.PrimaryColor, _model.ContactEmail));
+                new(_model.CompanyName, _model.Tagline, _model.PrimaryColor, _model.ContactEmail, _model.ArabicCompanyName, _model.ArabicTagline));
 
             _errors.Set(result);
             if (result.IsSuccess)
@@ -207,5 +220,9 @@ else
         public string PrimaryColor { get; set; } = string.Empty;
 
         public string? ContactEmail { get; set; }
+
+        public string? ArabicCompanyName { get; set; }
+
+        public string? ArabicTagline { get; set; }
     }
 }

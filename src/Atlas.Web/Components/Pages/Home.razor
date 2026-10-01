@@ -1,10 +1,12 @@
 @page "/"
+@page "/ar"
+@inherits PublicComponentBase
 @inject BrandingService Branding
 @inject UseCases UseCases
 
 @if (Settings is not null && Page is not null && Services is not null && Blocks is not null)
 {
-    <SeoHead CompanyName="@Settings.CompanyName" Tagline="@Settings.Tagline" Description="@Page.MetaDescription" />
+    <SeoHead CompanyName="@CompanyNameOf(Settings, Lang)" Tagline="@Settings.TaglineFor(Lang)" Description="@Page.MetaDescription" />
 
     <section class="hero">
         <MudContainer MaxWidth="MaxWidth.Large">
@@ -19,20 +21,20 @@
                         @if (!string.IsNullOrWhiteSpace(Page.CallToActionText) && !string.IsNullOrWhiteSpace(Page.CallToActionUrl))
                         {
                             <MudButton Href="@Page.CallToActionUrl" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
-                                       EndIcon="@Icons.Material.Filled.ArrowForward" DropShadow="false">
+                                       EndIcon="@ForwardIcon" DropShadow="false">
                                 @Page.CallToActionText
                             </MudButton>
                         }
                         @if (Services.Count > 0)
                         {
-                            <MudButton Href="/services" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large">
-                                Explore services
+                            <MudButton Href="@Href("/services")" Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Large">
+                                @L("Explore services")
                             </MudButton>
                         }
                     </div>
                 </div>
                 <div class="hero-visual" aria-hidden="true">
-                    <HeroIllustration />
+                    <HeroIllustration AriaLabel="@L("A web application and a mobile app")" />
                 </div>
             </div>
         </MudContainer>
@@ -46,18 +48,18 @@
     {
         <section class="section">
             <MudContainer MaxWidth="MaxWidth.Large">
-                <SectionHeading Eyebrow="What we do" Title="Services" />
+                <SectionHeading Eyebrow="@L("What we do")" Title="@L("Services")" />
                 <div class="card-grid">
                     @foreach (var service in Services.Take(6))
                     {
-                        <ServiceCard Service="service" CompanyName="@Settings.CompanyName" />
+                        <ServiceCard Service="service" CompanyName="@CompanyNameOf(Settings, Lang)" />
                     }
                 </div>
                 @if (Services.Count > 6)
                 {
                     <div class="d-flex justify-center mt-8">
-                        <MudButton Href="/services" Variant="Variant.Text" Color="Color.Primary" EndIcon="@Icons.Material.Filled.ArrowForward">
-                            View all services
+                        <MudButton Href="@Href("/services")" Variant="Variant.Text" Color="Color.Primary" EndIcon="@ForwardIcon">
+                            @L("View all services")
                         </MudButton>
                     </div>
                 }
@@ -80,8 +82,8 @@
                 {
                     <MudText Typo="Typo.body1" Class="mb-6">@Render(Contact.Subtitle)</MudText>
                 }
-                <MudButton Href="/contact" Variant="Variant.Filled" Size="Size.Large" Class="cta-band-button" DropShadow="false">
-                    Contact us
+                <MudButton Href="@Href("/contact")" Variant="Variant.Filled" Size="Size.Large" Class="cta-band-button" DropShadow="false">
+                    @L("Contact us")
                 </MudButton>
             </MudContainer>
         </section>
@@ -102,14 +104,14 @@
     protected override async Task OnInitializedAsync()
     {
         Settings ??= await Branding.GetAsync();
-        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Home));
-        Contact ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact));
-        Services ??= (await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: true))).ToList();
-        Blocks ??= (await UseCases.QueryAsync<GetContentBlocksQuery, IReadOnlyList<ContentBlockDto>>(new(null, PublishedOnly: true))).ToList();
+        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Home, Lang));
+        Contact ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact, Lang));
+        Services ??= (await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: true, Lang))).ToList();
+        Blocks ??= (await UseCases.QueryAsync<GetContentBlocksQuery, IReadOnlyList<ContentBlockDto>>(new(null, PublishedOnly: true, Lang))).ToList();
     }
 
     private IReadOnlyList<ContentBlockDto> Of(BlockKind kind) =>
         Blocks?.Where(b => b.Kind == kind).ToList() ?? [];
 
-    private string Render(string? text) => ContentText.Render(text, Settings?.CompanyName ?? string.Empty);
+    private string Render(string? text) => ContentText.Render(text, CompanyNameOf(Settings, Lang));
 }

@@ -28,8 +28,13 @@ work" steps, testimonials, FAQ and call to action), Services, About and Contact.
   Editable text can use the `{company}` token, which is replaced with the configured company name.
 - The contact form validates input and stores messages in the database. A honeypot field and a
   short cooldown stop simple spam, and the contact e-mail (if set) is notified.
-- SEO basics: per-page `<title>`, meta description, Open Graph tags, canonical URL, `robots.txt`
-  and `sitemap.xml`. Pages are prerendered on the server, so crawlers get full HTML.
+- **English and Arabic.** English pages live at `/…` and Arabic pages at `/ar/…`, with a
+  right-to-left layout, an Arabic font (IBM Plex Sans Arabic) and a language switch in the header.
+  Each language has its own page text, services and home page sections, edited in the dashboard
+  with the **English / العربية** switch. Fixed interface text is translated in
+  `src/Atlas.Web/Localization/UiText.cs`.
+- SEO basics: per-page `<title>`, meta description, Open Graph tags, canonical URL, `hreflang`
+  links between the two languages, `robots.txt` and `sitemap.xml` (both languages). Pages are prerendered on the server, so crawlers get full HTML.
 - The layout is responsive and uses the configured logo and primary color everywhere.
 
 **Admin dashboard** (`/admin`, *Admin* role only)
@@ -222,7 +227,8 @@ dotnet ef migrations script --idempotent \
 | `Database:Provider` | `SqlServer` | `SqlServer` or `Sqlite` (demo only) |
 | `Database:ApplyMigrationsOnStartup` | `false` (`true` in Development) | Run `Migrate()` on startup |
 | `Branding:CompanyName` | `Atlas` | Default company name until one is saved in the dashboard |
-| `Branding:Tagline` | `Software, built right.` | Default tagline |
+| `Branding:Tagline` | `Web and mobile apps for Saudi businesses.` | Default tagline |
+| `Branding:ArabicCompanyName` / `Branding:ArabicTagline` | *(empty)* / Arabic tagline | Defaults for the Arabic site (falls back to English) |
 | `Branding:PrimaryColor` | `#1e63e9` | Default brand color (`#RRGGBB`) |
 | `Branding:ContactEmail` | *(empty)* | Default contact/notification e-mail |
 | `Branding:LogoUrl` | *(empty)* | Optional default logo URL |
@@ -296,6 +302,7 @@ dotnet test
 | `Atlas.Domain.Tests` | Entity and value-object rules |
 | `Atlas.Application.Tests` | Handlers and validators with in-memory fakes and `FakeTimeProvider` |
 | `Atlas.Infrastructure.Tests` | Repositories, seeding, Identity and file storage against SQLite, plus a migration drift check |
+| `Atlas.Web.Tests` | Language routing (`/ar/…`) and interface translations |
 | `Atlas.Architecture.Tests` | Layer dependency rules (NetArchTest), project references, sealed handlers, no public setters on entities, forbidden libraries |
 
 `.github/workflows/ci.yml` runs restore, build (Release, warnings as errors) and all tests on

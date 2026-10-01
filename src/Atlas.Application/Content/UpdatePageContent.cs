@@ -12,7 +12,8 @@ public sealed record UpdatePageContentCommand(
     string? Body,
     string? CallToActionText,
     string? CallToActionUrl,
-    string? MetaDescription)
+    string? MetaDescription,
+    SiteLanguage Language = SiteLanguage.English)
 {
     public PageText ToPageText() =>
         new(Title, Subtitle, Body, CallToActionText, CallToActionUrl, MetaDescription);
@@ -22,6 +23,7 @@ public sealed class UpdatePageContentValidator : IValidator<UpdatePageContentCom
 {
     public IReadOnlyList<Error> Validate(UpdatePageContentCommand instance) => new ValidationErrors()
         .Must(Enum.IsDefined(instance.Key), nameof(instance.Key), "Unknown page.")
+        .Must(Enum.IsDefined(instance.Language), nameof(instance.Language), "Unknown language.")
         .Required(instance.Title, nameof(instance.Title), "Title", PageContent.TitleMaxLength)
         .Optional(instance.Subtitle, nameof(instance.Subtitle), "Subtitle", PageContent.SubtitleMaxLength)
         .Optional(instance.Body, nameof(instance.Body), "Body", PageContent.BodyMaxLength)
@@ -52,10 +54,10 @@ public sealed class UpdatePageContentHandler(
         try
         {
             var now = timeProvider.UtcNow();
-            var page = await repository.GetAsync(command.Key, cancellationToken);
+            var page = await repository.GetAsync(command.Key, command.Language, cancellationToken);
             if (page is null)
             {
-                page = PageContent.Create(command.Key, command.ToPageText(), now);
+                page = PageContent.Create(command.Key, command.ToPageText(), now, command.Language);
                 repository.Add(page);
             }
             else

@@ -98,3 +98,50 @@ public sealed class ContentHandlerTests
         Assert.Equal(["A", "B"], result.Select(s => s.Title));
     }
 }
+
+public sealed class LanguageContentTests
+{
+    private readonly InMemoryPageContentRepository _pages = new();
+    private readonly InMemoryServiceRepository _services = new();
+    private readonly FakeUnitOfWork _unitOfWork = new();
+
+    [Fact]
+    public async Task Missing_arabic_page_falls_back_to_arabic_defaults()
+    {
+        var page = await new GetPageContentHandler(_pages).HandleAsync(
+            new GetPageContentQuery(PageKey.Home, Domain.Common.SiteLanguage.Arabic), TestContext.Current.CancellationToken);
+
+        Assert.Equal(DefaultContent.For(PageKey.Home, Domain.Common.SiteLanguage.Arabic).Title, page.Title);
+        Assert.Equal(Domain.Common.SiteLanguage.Arabic, page.Language);
+    }
+
+    [Fact]
+    public async Task Each_language_has_its_own_page_text()
+    {
+        var handler = new UpdatePageContentHandler(_pages, _unitOfWork, new UpdatePageContentValidator(), TestData.Clock());
+        var ct = TestContext.Current.CancellationToken;
+
+        await handler.HandleAsync(new UpdatePageContentCommand(PageKey.About, "About", null, null, null, null, null), ct);
+        await handler.HandleAsync(new UpdatePageContentCommand(PageKey.About, "من نحن", null, null, null, null, null, Domain.Common.SiteLanguage.Arabic), ct);
+
+        Assert.Equal(2, _pages.Pages.Count);
+        var arabic = await new GetPageContentHandler(_pages).HandleAsync(new GetPageContentQuery(PageKey.About, Domain.Common.SiteLanguage.Arabic), ct);
+        Assert.Equal("من نحن", arabic.Title);
+    }
+
+    [Fact]
+    public async Task Services_are_listed_per_language_and_cannot_switch_language()
+    {
+        var save = new SaveServiceHandler(_services, _unitOfWork, new SaveServiceValidator(), TestData.Clock());
+        var ct = TestContext.Current.CancellationToken;
+
+        var english = await save.HandleAsync(new SaveServiceCommand(null, "Web", "Web apps", null, null, 0, true), ct);
+        await save.HandleAsync(new SaveServiceCommand(null, "الويب", "تطبيقات الويب", null, null, 0, true, Domain.Common.SiteLanguage.Arabic), ct);
+
+        var arabicList = await new GetServicesHandler(_services).HandleAsync(new GetServicesQuery(true, Domain.Common.SiteLanguage.Arabic), ct);
+        Assert.Equal(["الويب"], arabicList.Select(s => s.Title));
+
+        var moved = await save.HandleAsync(new SaveServiceCommand(english.Value.Id, "Web", "Web apps", null, null, 0, true, Domain.Common.SiteLanguage.Arabic), ct);
+        Assert.True(moved.IsFailure);
+    }
+}

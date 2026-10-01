@@ -1,10 +1,12 @@
 @page "/services"
+@page "/ar/services"
+@inherits PublicComponentBase
 @inject BrandingService Branding
 @inject UseCases UseCases
 
 @if (Settings is not null && Page is not null && Items is not null)
 {
-    <SeoHead Title="@Render(Page.Title)" Description="@Page.MetaDescription" CompanyName="@Settings.CompanyName" />
+    <SeoHead Title="@Render(Page.Title)" Description="@Page.MetaDescription" CompanyName="@CompanyNameOf(Settings, Lang)" />
 
     <PageHeader Title="@Render(Page.Title)" Subtitle="@Render(Page.Subtitle)" />
 
@@ -13,7 +15,7 @@
             @if (!string.IsNullOrWhiteSpace(Page.Body))
             {
                 <div class="mb-10 prose">
-                    @foreach (var paragraph in ContentText.Paragraphs(Page.Body, Settings.CompanyName))
+                    @foreach (var paragraph in ContentText.Paragraphs(Page.Body, CompanyNameOf(Settings, Lang)))
                     {
                         <MudText Typo="Typo.body1" Class="mb-4">@paragraph</MudText>
                     }
@@ -22,14 +24,14 @@
 
             @if (Items.Count == 0)
             {
-                <MudText Typo="Typo.body1" Class="text-secondary">Our services will be listed here soon.</MudText>
+                <MudText Typo="Typo.body1" Class="text-secondary">@L("Our services will be listed here soon.")</MudText>
             }
             else
             {
                 <div class="card-grid">
                     @foreach (var service in Items)
                     {
-                        <ServiceCard Service="service" ShowDescription="true" CompanyName="@Settings.CompanyName" />
+                        <ServiceCard Service="service" ShowDescription="true" CompanyName="@CompanyNameOf(Settings, Lang)" />
                     }
                 </div>
             }
@@ -58,9 +60,9 @@
     protected override async Task OnInitializedAsync()
     {
         Settings ??= await Branding.GetAsync();
-        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Services));
-        Items ??= (await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: true))).ToList();
+        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Services, Lang));
+        Items ??= (await UseCases.QueryAsync<GetServicesQuery, IReadOnlyList<ServiceDto>>(new(PublishedOnly: true, Lang))).ToList();
     }
 
-    private string Render(string? text) => ContentText.Render(text, Settings?.CompanyName ?? string.Empty);
+    private string Render(string? text) => ContentText.Render(text, CompanyNameOf(Settings, Lang));
 }

@@ -49,3 +49,24 @@ public sealed class SiteSettingsTests
         Assert.Equal("hi@example.com", settings.ContactEmail?.Value);
     }
 }
+
+public sealed class ArabicSettingsTests
+{
+    [Fact]
+    public void Arabic_name_and_tagline_are_optional()
+    {
+        var settings = SiteSettings.Create("Atlas", null, HexColor.Create("#123456"), null, TestTime.Now);
+
+        settings.UpdateArabic("  أطلس ", "  ", TestTime.Now);
+
+        Assert.Equal("أطلس", settings.ArabicCompanyName);
+        Assert.Null(settings.ArabicTagline);
+    }
+
+    [Fact]
+    public void Unknown_language_is_rejected()
+    {
+        Assert.Throws<DomainException>(() =>
+            Atlas.Domain.Content.PageContent.Create(Atlas.Domain.Content.PageKey.Home, new Atlas.Domain.Content.PageText("T"), TestTime.Now, (SiteLanguage)9));
+    }
+}

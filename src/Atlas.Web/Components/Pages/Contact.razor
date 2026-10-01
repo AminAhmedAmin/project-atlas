@@ -1,12 +1,13 @@
 @page "/contact"
-@using System.ComponentModel.DataAnnotations
+@page "/ar/contact"
+@inherits PublicComponentBase
 @using ContactMessageEntity = Atlas.Domain.Contact.ContactMessage
 @inject BrandingService Branding
 @inject UseCases UseCases
 
 @if (Settings is not null && Page is not null)
 {
-    <SeoHead Title="@Render(Page.Title)" Description="@Page.MetaDescription" CompanyName="@Settings.CompanyName" />
+    <SeoHead Title="@Render(Page.Title)" Description="@Page.MetaDescription" CompanyName="@CompanyNameOf(Settings, Lang)" />
 
     <PageHeader Title="@Render(Page.Title)" Subtitle="@Render(Page.Subtitle)" />
 
@@ -18,32 +19,35 @@
                     {
                         <MudPaper Class="pa-8 text-center" Outlined="true" Elevation="0">
                             <MudIcon Icon="@Icons.Material.Outlined.MarkEmailRead" Color="Color.Success" Style="font-size:3rem" />
-                            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mt-4 mb-2">Thank you!</MudText>
-                            <MudText Typo="Typo.body1" Class="mb-6">Your message has been sent. We will get back to you soon.</MudText>
-                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Reset">Send another message</MudButton>
+                            <MudText Typo="Typo.h5" HtmlTag="h2" Class="mt-4 mb-2">@L("Thank you!")</MudText>
+                            <MudText Typo="Typo.body1" Class="mb-6">@L("Your message has been sent. We will get back to you soon.")</MudText>
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" OnClick="Reset">@L("Send another message")</MudButton>
                         </MudPaper>
                     }
                     else
                     {
-                        <EditForm Model="_model" OnValidSubmit="SubmitAsync" FormName="contact">
-                            <DataAnnotationsValidator />
+                        <EditForm Model="_model" OnSubmit="SubmitAsync" FormName="contact">
                             <MudPaper Class="pa-6 pa-md-8" Outlined="true" Elevation="0">
                                 <MudGrid Spacing="3">
                                     <MudItem xs="12" sm="6">
-                                        <MudTextField @bind-Value="_model.Name" For="() => _model.Name" Label="Name" Variant="Variant.Outlined"
-                                                      MaxLength="ContactMessageEntity.NameMaxLength" autocomplete="name" />
+                                        <MudTextField @bind-Value="_model.Name" Label="@L("Name")" Variant="Variant.Outlined"
+                                                      MaxLength="ContactMessageEntity.NameMaxLength" autocomplete="name"
+                                                      Error="@_errors.ContainsKey(NameField)" ErrorText="@_errors.GetValueOrDefault(NameField)" />
                                     </MudItem>
                                     <MudItem xs="12" sm="6">
-                                        <MudTextField @bind-Value="_model.Email" For="() => _model.Email" Label="E-mail" Variant="Variant.Outlined"
-                                                      InputType="InputType.Email" autocomplete="email" />
+                                        <MudTextField @bind-Value="_model.Email" Label="@L("E-mail")" Variant="Variant.Outlined"
+                                                      InputType="InputType.Email" autocomplete="email" dir="ltr"
+                                                      Error="@_errors.ContainsKey(EmailField)" ErrorText="@_errors.GetValueOrDefault(EmailField)" />
                                     </MudItem>
                                     <MudItem xs="12">
-                                        <MudTextField @bind-Value="_model.Subject" For="() => _model.Subject" Label="Subject (optional)" Variant="Variant.Outlined"
-                                                      MaxLength="ContactMessageEntity.SubjectMaxLength" />
+                                        <MudTextField @bind-Value="_model.Subject" Label="@L("Subject (optional)")" Variant="Variant.Outlined"
+                                                      MaxLength="ContactMessageEntity.SubjectMaxLength"
+                                                      Error="@_errors.ContainsKey(SubjectField)" ErrorText="@_errors.GetValueOrDefault(SubjectField)" />
                                     </MudItem>
                                     <MudItem xs="12">
-                                        <MudTextField @bind-Value="_model.Message" For="() => _model.Message" Label="Message" Variant="Variant.Outlined"
-                                                      Lines="6" Sizing="InputSizing.Auto" MaxLength="ContactMessageEntity.MessageMaxLength" Counter="ContactMessageEntity.MessageMaxLength" />
+                                        <MudTextField @bind-Value="_model.Message" Label="@L("Message")" Variant="Variant.Outlined"
+                                                      Lines="6" Sizing="InputSizing.Auto" MaxLength="ContactMessageEntity.MessageMaxLength" Counter="ContactMessageEntity.MessageMaxLength"
+                                                      Error="@_errors.ContainsKey(MessageField)" ErrorText="@_errors.GetValueOrDefault(MessageField)" />
                                     </MudItem>
                                     @* Honeypot: hidden from people, often filled in by bots. *@
                                     <div class="hp-field" aria-hidden="true">
@@ -59,7 +63,7 @@
                                     <MudItem xs="12">
                                         <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Large"
                                                    Disabled="_submitting" DropShadow="false" EndIcon="@Icons.Material.Filled.Send">
-                                            @(_submitting ? "Sending…" : "Send message")
+                                            @(_submitting ? L("Sending…") : L("Send message"))
                                         </MudButton>
                                     </MudItem>
                                 </MudGrid>
@@ -71,7 +75,7 @@
                     <div class="contact-aside">
                         @if (!string.IsNullOrWhiteSpace(Page.Body))
                         {
-                            @foreach (var paragraph in ContentText.Paragraphs(Page.Body, Settings.CompanyName))
+                            @foreach (var paragraph in ContentText.Paragraphs(Page.Body, CompanyNameOf(Settings, Lang)))
                             {
                                 <MudText Typo="Typo.body1" Class="mb-4">@paragraph</MudText>
                             }
@@ -81,14 +85,14 @@
                             <div class="d-flex align-center gap-3 mt-4">
                                 <MudIcon Icon="@Icons.Material.Outlined.Email" Color="Color.Primary" />
                                 <div>
-                                    <MudText Typo="Typo.subtitle2">Prefer e-mail?</MudText>
-                                    <a href="mailto:@Settings.ContactEmail">@Settings.ContactEmail</a>
+                                    <MudText Typo="Typo.subtitle2">@L("Prefer e-mail?")</MudText>
+                                    <a href="mailto:@Settings.ContactEmail" dir="ltr">@Settings.ContactEmail</a>
                                 </div>
                             </div>
                         }
                         <div class="d-flex align-center gap-3 mt-4">
                             <MudIcon Icon="@Icons.Material.Outlined.Schedule" Color="Color.Primary" />
-                            <MudText Typo="Typo.body2">We usually reply within one business day.</MudText>
+                            <MudText Typo="Typo.body2">@L("We usually reply within one business day.")</MudText>
                         </div>
                     </div>
                 </MudItem>
@@ -98,9 +102,14 @@
 }
 
 @code {
+    private const string NameField = nameof(SubmitContactMessageCommand.Name);
+    private const string EmailField = nameof(SubmitContactMessageCommand.Email);
+    private const string SubjectField = nameof(SubmitContactMessageCommand.Subject);
+    private const string MessageField = nameof(SubmitContactMessageCommand.Message);
     private static readonly TimeSpan Cooldown = TimeSpan.FromSeconds(20);
 
     private ContactFormModel _model = new();
+    private Dictionary<string, string> _errors = [];
     private bool _sent;
     private bool _submitting;
     private string? _error;
@@ -113,12 +122,17 @@
     protected override async Task OnInitializedAsync()
     {
         Settings ??= await Branding.GetAsync();
-        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact));
+        Page ??= await UseCases.QueryAsync<GetPageContentQuery, PageContentDto>(new(PageKey.Contact, Lang));
     }
 
     private async Task SubmitAsync()
     {
         _error = null;
+        _errors = Validate(_model);
+        if (_errors.Count > 0)
+        {
+            return;
+        }
 
         if (!string.IsNullOrEmpty(_model.Website))
         {
@@ -128,7 +142,7 @@
 
         if (DateTime.UtcNow - _lastSubmittedUtc < Cooldown)
         {
-            _error = "Please wait a few seconds before sending another message.";
+            _error = L("Please wait a few seconds before sending another message.");
             return;
         }
 
@@ -145,7 +159,12 @@
             }
             else
             {
-                _error = result.ErrorMessage;
+                // Server rules mirror the checks above; map any remaining errors to localized messages.
+                _errors = result.Errors
+                    .Where(e => e.Field is not null)
+                    .GroupBy(e => e.Field!)
+                    .ToDictionary(g => g.Key, g => MessageFor(g.Key));
+                _error = _errors.Count == 0 ? L("Something went wrong. Please try again.") : null;
             }
         }
         finally
@@ -154,29 +173,57 @@
         }
     }
 
+    private Dictionary<string, string> Validate(ContactFormModel model)
+    {
+        var errors = new Dictionary<string, string>();
+        if (string.IsNullOrWhiteSpace(model.Name) || model.Name.Trim().Length > ContactMessageEntity.NameMaxLength)
+        {
+            errors[NameField] = MessageFor(NameField);
+        }
+
+        if (!EmailAddress.TryCreate(model.Email, out _))
+        {
+            errors[EmailField] = MessageFor(EmailField);
+        }
+
+        if (model.Subject?.Trim().Length > ContactMessageEntity.SubjectMaxLength)
+        {
+            errors[SubjectField] = L("This text is too long.");
+        }
+
+        if (string.IsNullOrWhiteSpace(model.Message) || model.Message.Trim().Length > ContactMessageEntity.MessageMaxLength)
+        {
+            errors[MessageField] = MessageFor(MessageField);
+        }
+
+        return errors;
+    }
+
+    private string MessageFor(string field) => field switch
+    {
+        NameField => L("Please enter your name."),
+        EmailField => string.IsNullOrWhiteSpace(_model.Email) ? L("Please enter your e-mail address.") : L("Please enter a valid e-mail address."),
+        MessageField => L("Please enter a message."),
+        _ => L("This text is too long."),
+    };
+
     private void Reset()
     {
         _model = new ContactFormModel();
+        _errors = [];
         _sent = false;
     }
 
-    private string Render(string? text) => ContentText.Render(text, Settings?.CompanyName ?? string.Empty);
+    private string Render(string? text) => ContentText.Render(text, CompanyNameOf(Settings, Lang));
 
     private sealed class ContactFormModel
     {
-        [Required(ErrorMessage = "Please enter your name.")]
-        [StringLength(ContactMessageEntity.NameMaxLength)]
         public string Name { get; set; } = string.Empty;
 
-        [Required(ErrorMessage = "Please enter your e-mail address.")]
-        [EmailAddress(ErrorMessage = "Please enter a valid e-mail address.")]
         public string Email { get; set; } = string.Empty;
 
-        [StringLength(ContactMessageEntity.SubjectMaxLength)]
         public string? Subject { get; set; }
 
-        [Required(ErrorMessage = "Please enter a message.")]
-        [StringLength(ContactMessageEntity.MessageMaxLength)]
         public string Message { get; set; } = string.Empty;
 
         public string? Website { get; set; }

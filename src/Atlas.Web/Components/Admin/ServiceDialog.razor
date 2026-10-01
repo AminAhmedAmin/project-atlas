@@ -2,10 +2,10 @@
 
 <MudDialog>
     <TitleContent>
-        <MudText Typo="Typo.h6">@(Service is null ? "Add service" : "Edit service")</MudText>
+        <MudText Typo="Typo.h6">@(Service is null ? "Add service" : "Edit service") (@Language)</MudText>
     </TitleContent>
     <DialogContent>
-        <MudGrid Spacing="3">
+        <MudGrid Spacing="3" dir="@SiteLanguages.Direction(Language)">
             <MudItem xs="12" sm="8">
                 <MudTextField @bind-Value="_model.Title" Label="Title" Variant="Variant.Outlined" Required="true" MaxLength="Atlas.Domain.Content.Service.TitleMaxLength"
                               Error="_errors.Has(nameof(_model.Title))" ErrorText="@_errors.For(nameof(_model.Title))" />
@@ -63,6 +63,8 @@
 
     [Parameter] public int NextDisplayOrder { get; set; }
 
+    [Parameter] public SiteLanguage Language { get; set; } = SiteLanguage.English;
+
     protected override void OnInitialized()
     {
         _model = Service is null
@@ -84,7 +86,7 @@
         try
         {
             var result = await UseCases.SendAsync<SaveServiceCommand, ServiceDto>(new(
-                Service?.Id, _model.Title, _model.Summary, _model.Description, _model.Icon, _model.DisplayOrder, _model.IsPublished));
+                Service?.Id, _model.Title, _model.Summary, _model.Description, _model.Icon, _model.DisplayOrder, _model.IsPublished, Language));
 
             _errors.Set(result);
             if (result.IsSuccess)
