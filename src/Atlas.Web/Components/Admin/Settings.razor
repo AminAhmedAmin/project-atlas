@@ -43,7 +43,7 @@ else
                         </MudItem>
                         <MudItem xs="12">
                             <MudTextField @bind-Value="_model.ContactEmail" Label="Contact e-mail" Variant="Variant.Outlined" InputType="InputType.Email"
-                                          HelperText="Shown on the website and notified about new contact messages."
+                                          HelperText="Shown on the website."
                                           Error="_errors.Has(nameof(_model.ContactEmail))" ErrorText="@_errors.For(nameof(_model.ContactEmail))" />
                         </MudItem>
                         <MudItem xs="12">
@@ -79,6 +79,8 @@ else
         </MudItem>
 
         <MudItem xs="12" lg="5">
+            <TelegramAlerts />
+
             <MudPaper Outlined="true" Elevation="0" Class="pa-6 mb-4">
                 <MudText Typo="Typo.h6" HtmlTag="h2" Class="mb-4">Logo</MudText>
                 <div class="logo-preview mb-4">

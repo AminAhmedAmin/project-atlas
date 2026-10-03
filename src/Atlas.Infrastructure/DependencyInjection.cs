@@ -1,9 +1,9 @@
 using Atlas.Application.Abstractions;
 using Atlas.Application.Settings;
 using Atlas.Application.Users;
-using Atlas.Infrastructure.Email;
 using Atlas.Infrastructure.Files;
 using Atlas.Infrastructure.Identity;
+using Atlas.Infrastructure.Notifications;
 using Atlas.Infrastructure.Persistence;
 using Atlas.Infrastructure.Persistence.Repositories;
 using Atlas.Infrastructure.Seeding;
@@ -74,7 +74,10 @@ public static class DependencyInjection
 
         services.AddScoped<IUserAdminService, UserAdminService>();
         services.AddSingleton<IFileStorage, LocalFileStorage>();
-        services.AddSingleton<IEmailSender, LoggingEmailSender>();
+        services.Configure<TelegramOptions>(configuration.GetSection(TelegramOptions.SectionName));
+        services.AddHttpClient<ITelegramGateway, TelegramGateway>(client => client.Timeout = TimeSpan.FromSeconds(15))
+            // The default HttpClient logging writes request URLs, which contain the bot token.
+            .RemoveAllLoggers();
         services.AddScoped<DatabaseSeeder>();
 
         services.AddHealthChecks()
