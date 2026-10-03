@@ -70,3 +70,28 @@ public sealed class ArabicSettingsTests
             Atlas.Domain.Content.PageContent.Create(Atlas.Domain.Content.PageKey.Home, new Atlas.Domain.Content.PageText("T"), TestTime.Now, (SiteLanguage)9));
     }
 }
+
+public sealed class TelegramSettingsTests
+{
+    [Fact]
+    public void Telegram_chat_can_be_connected_and_disconnected()
+    {
+        var settings = SiteSettings.Create("Atlas", null, HexColor.Create("#123456"), null, TestTime.Now);
+
+        settings.ConnectTelegram(-1001234567890, " Sales team ", TestTime.Now);
+        Assert.Equal(-1001234567890, settings.TelegramChatId);
+        Assert.Equal("Sales team", settings.TelegramChatTitle);
+
+        settings.DisconnectTelegram(TestTime.Now);
+        Assert.Null(settings.TelegramChatId);
+        Assert.Null(settings.TelegramChatTitle);
+    }
+
+    [Fact]
+    public void Zero_is_not_a_chat()
+    {
+        var settings = SiteSettings.Create("Atlas", null, HexColor.Create("#123456"), null, TestTime.Now);
+
+        Assert.Throws<DomainException>(() => settings.ConnectTelegram(0, null, TestTime.Now));
+    }
+}

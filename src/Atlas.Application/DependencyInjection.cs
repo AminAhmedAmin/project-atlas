@@ -34,6 +34,7 @@ public static class DependencyInjection
 
         services.TryAddSingleton(TimeProvider.System);
         services.TryAddSingleton<IChatNotifier, NullChatNotifier>();
+        services.AddScoped<ITeamNotifier, Notifications.TeamNotifier>();
         return services;
     }
 }

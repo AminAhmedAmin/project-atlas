@@ -24,6 +24,12 @@ public sealed class SiteSettings : Entity
     /// <summary>WhatsApp number in international digits (e.g. 9665XXXXXXXX), used for the WhatsApp button.</summary>
     public string? WhatsAppNumber { get; private set; }
 
+    /// <summary>Telegram chat (person or group) that receives alerts about new messages and chats.</summary>
+    public long? TelegramChatId { get; private set; }
+
+    /// <summary>Display name of <see cref="TelegramChatId"/>, so the dashboard can show who receives alerts.</summary>
+    public string? TelegramChatTitle { get; private set; }
+
     /// <summary>Company name shown on the Arabic site. Falls back to <see cref="CompanyName"/>.</summary>
     public string? ArabicCompanyName { get; private set; }
 
@@ -92,6 +98,25 @@ public sealed class SiteSettings : Entity
             throw new DomainException("WhatsApp number is not valid.");
         }
 
+        UpdatedAtUtc = Guard.Utc(nowUtc, nameof(nowUtc));
+    }
+
+    public void ConnectTelegram(long chatId, string? chatTitle, DateTime nowUtc)
+    {
+        if (chatId == 0)
+        {
+            throw new DomainException("Telegram chat id is not valid.");
+        }
+
+        TelegramChatId = chatId;
+        TelegramChatTitle = Guard.Optional(chatTitle, "Telegram chat name", CompanyNameMaxLength);
+        UpdatedAtUtc = Guard.Utc(nowUtc, nameof(nowUtc));
+    }
+
+    public void DisconnectTelegram(DateTime nowUtc)
+    {
+        TelegramChatId = null;
+        TelegramChatTitle = null;
         UpdatedAtUtc = Guard.Utc(nowUtc, nameof(nowUtc));
     }
 

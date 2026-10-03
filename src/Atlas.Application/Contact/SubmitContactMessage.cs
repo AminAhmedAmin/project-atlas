@@ -32,9 +32,8 @@ public sealed class SubmitContactMessageValidator : IValidator<SubmitContactMess
 
 public sealed partial class SubmitContactMessageHandler(
     IContactMessageRepository repository,
-    ISiteSettingsRepository settingsRepository,
     IUnitOfWork unitOfWork,
-    IEmailSender emailSender,
+    ITeamNotifier teamNotifier,
     IValidator<SubmitContactMessageCommand> validator,
     TimeProvider timeProvider,
     ILogger<SubmitContactMessageHandler> logger) : ICommandHandler<SubmitContactMessageCommand, Guid>
@@ -71,41 +70,24 @@ public sealed partial class SubmitContactMessageHandler(
         return Result.Success(message.Id);
     }
 
-    /// <summary>Best effort: the message is already saved, so a mail failure must not fail the submission.</summary>
-    private async Task NotifyAsync(ContactMessage message, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var settings = await settingsRepository.GetAsync(cancellationToken);
-            if (settings?.ContactEmail is not { } to)
-            {
-                return;
-            }
-
-            var subject = $"New contact message: {message.Subject ?? message.Name}";
-            var body = string.Join('\n', new[]
-            {
-                $"From: {message.Name} <{message.Email}>",
-                message.Phone is null ? null : $"Phone: {message.Phone}",
-                message.Service is null ? null : $"Service: {message.Service}",
-                message.Budget is null ? null : $"Budget: {BudgetRanges.Label(message.Budget)}",
-                $"Language: {message.Language}",
-                string.Empty,
+    private Task NotifyAsync(ContactMessage message, CancellationToken cancellationToken) =>
+        teamNotifier.NotifyAsync(
+            new TeamAlert(
+                "📩 New contact message",
+                [
+                    new("Name", message.Name),
+                    new("E-mail", message.Email.Value),
+                    new("Phone", message.Phone),
+                    new("Service", message.Service),
+                    new("Budget", message.Budget is null ? null : BudgetRanges.Label(message.Budget)),
+                    new("Language", message.Language.ToString()),
+                    new("Subject", message.Subject),
+                ],
                 message.Message,
-            }.Where(line => line is not null));
-            await emailSender.SendAsync(new EmailMessage(to.Value, subject, body, message.Email.Value), cancellationToken);
-        }
-#pragma warning disable CA1031 // Notification failures are logged and swallowed by design.
-        catch (Exception ex) when (ex is not OperationCanceledException)
-#pragma warning restore CA1031
-        {
-            LogNotifyFailed(logger, message.Id, ex);
-        }
-    }
+                "/admin/messages"),
+            cancellationToken);
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Contact message {MessageId} received")]
     private static partial void LogReceived(ILogger logger, Guid messageId);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to send notification for contact message {MessageId}")]
-    private static partial void LogNotifyFailed(ILogger logger, Guid messageId, Exception exception);
 }

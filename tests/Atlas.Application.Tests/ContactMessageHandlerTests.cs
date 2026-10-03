@@ -10,15 +10,13 @@ namespace Atlas.Application.Tests;
 public sealed class ContactMessageHandlerTests
 {
     private readonly InMemoryContactMessageRepository _messages = new();
-    private readonly InMemorySiteSettingsRepository _settings = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
-    private readonly RecordingEmailSender _email = new();
+    private readonly RecordingTeamNotifier _alerts = new();
 
     private SubmitContactMessageHandler SubmitHandler() => new(
         _messages,
-        _settings,
         _unitOfWork,
-        _email,
+        _alerts,
         new SubmitContactMessageValidator(),
         TestData.Clock(),
         NullLogger<SubmitContactMessageHandler>.Instance);
@@ -51,31 +49,25 @@ public sealed class ContactMessageHandlerTests
     }
 
     [Fact]
-    public async Task Submit_notifies_contact_email_when_configured()
+    public async Task Submit_alerts_the_team_with_the_message_details()
     {
-        _settings.Settings = SiteSettings.Create("Co", null, HexColor.Create("#000000"), EmailAddress.Create("inbox@example.com"), TestData.Now.UtcDateTime);
-
         await SubmitHandler().HandleAsync(
-            new SubmitContactMessageCommand("Jane", "jane@example.com", null, "Hello"),
+            new SubmitContactMessageCommand("Jane", "jane@example.com", null, "Hello", "0551234567", "Mobile apps", BudgetRanges.Under50K),
             TestContext.Current.CancellationToken);
 
-        var mail = Assert.Single(_email.Sent);
-        Assert.Equal("inbox@example.com", mail.To);
-        Assert.Equal("jane@example.com", mail.ReplyTo);
+        var alert = Assert.Single(_alerts.Alerts);
+        Assert.Equal("Hello", alert.Body);
+        Assert.Equal("/admin/messages", alert.DashboardPath);
+        Assert.Contains(alert.Fields, f => f.Key == "Phone" && f.Value == "0551234567");
+        Assert.Contains(alert.Fields, f => f.Key == "Budget" && f.Value == BudgetRanges.Label(BudgetRanges.Under50K));
     }
 
     [Fact]
-    public async Task Submit_succeeds_even_when_notification_fails()
+    public async Task Invalid_submissions_do_not_alert()
     {
-        _settings.Settings = SiteSettings.Create("Co", null, HexColor.Create("#000000"), EmailAddress.Create("inbox@example.com"), TestData.Now.UtcDateTime);
-        _email.Fail = true;
+        await SubmitHandler().HandleAsync(new SubmitContactMessageCommand("", "nope", null, ""), TestContext.Current.CancellationToken);
 
-        var result = await SubmitHandler().HandleAsync(
-            new SubmitContactMessageCommand("Jane", "jane@example.com", null, "Hello"),
-            TestContext.Current.CancellationToken);
-
-        Assert.True(result.IsSuccess);
-        Assert.Single(_messages.Messages);
+        Assert.Empty(_alerts.Alerts);
     }
 
     [Fact]
@@ -142,9 +134,8 @@ public sealed class ContactDetailsHandlerTests
 
     private SubmitContactMessageHandler Handler() => new(
         _messages,
-        new InMemorySiteSettingsRepository(),
         new FakeUnitOfWork(),
-        new RecordingEmailSender(),
+        new RecordingTeamNotifier(),
         new SubmitContactMessageValidator(),
         TestData.Clock(),
         NullLogger<SubmitContactMessageHandler>.Instance);

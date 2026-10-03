@@ -21,10 +21,9 @@ public sealed class StartChatValidator : IValidator<StartChatCommand>
 
 public sealed partial class StartChatHandler(
     IChatRepository repository,
-    ISiteSettingsRepository settingsRepository,
     IUnitOfWork unitOfWork,
     IChatNotifier notifier,
-    IEmailSender emailSender,
+    ITeamNotifier teamNotifier,
     IValidator<StartChatCommand> validator,
     TimeProvider timeProvider,
     ILogger<StartChatHandler> logger) : ICommandHandler<StartChatCommand, StartChatResult>
@@ -55,33 +54,24 @@ public sealed partial class StartChatHandler(
         LogStarted(logger, conversation.Id);
         notifier.ConversationChanged(conversation.Id);
 
-        await NotifyByEmailAsync(conversation, command.Message, cancellationToken);
-        return Result.Success(new StartChatResult(conversation.Id, token));
-    }
+        await teamNotifier.NotifyAsync(
+            new TeamAlert(
+                "💬 New live chat",
+                [
+                    new("Name", conversation.VisitorName),
+                    new("Contact", conversation.VisitorContact),
+                    new("Language", conversation.Language.ToString()),
+                ],
+                command.Message,
+                "/admin/chat"),
+            cancellationToken);
 
-    private async Task NotifyByEmailAsync(ChatConversation conversation, string message, CancellationToken cancellationToken)
-    {
-        try
-        {
-            if ((await settingsRepository.GetAsync(cancellationToken))?.ContactEmail is { } to)
-            {
-                var body = $"{conversation.VisitorName} ({conversation.VisitorContact ?? "no contact details"}) started a chat:\n\n{message}\n\nReply from the dashboard: /admin/chat";
-                await emailSender.SendAsync(new EmailMessage(to.Value, $"New website chat from {conversation.VisitorName}", body), cancellationToken);
-            }
-        }
-#pragma warning disable CA1031 // Notification failures are logged and swallowed by design.
-        catch (Exception ex) when (ex is not OperationCanceledException)
-#pragma warning restore CA1031
-        {
-            LogNotifyFailed(logger, conversation.Id, ex);
-        }
+        return Result.Success(new StartChatResult(conversation.Id, token));
     }
 
     [LoggerMessage(Level = LogLevel.Information, Message = "Chat {ConversationId} started")]
     private static partial void LogStarted(ILogger logger, Guid conversationId);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Failed to send e-mail for new chat {ConversationId}")]
-    private static partial void LogNotifyFailed(ILogger logger, Guid conversationId, Exception exception);
 }
 
 public sealed record SendVisitorChatMessageCommand(Guid ConversationId, string AccessToken, string Text);
@@ -90,6 +80,7 @@ public sealed class SendVisitorChatMessageHandler(
     IChatRepository repository,
     IUnitOfWork unitOfWork,
     IChatNotifier notifier,
+    ITeamNotifier teamNotifier,
     TimeProvider timeProvider) : ICommandHandler<SendVisitorChatMessageCommand>
 {
     public async Task<Result> HandleAsync(SendVisitorChatMessageCommand command, CancellationToken cancellationToken = default)
@@ -100,6 +91,9 @@ public sealed class SendVisitorChatMessageHandler(
             return Result.Failure(Error.NotFound("Conversation"));
         }
 
+        // Alert the team when a visitor writes again after the team has caught up,
+        // not for every message in a burst.
+        var teamWasUpToDate = conversation.UnreadByAgent == 0;
         try
         {
             conversation.AddVisitorMessage(command.Text, timeProvider.UtcNow());
@@ -111,6 +105,14 @@ public sealed class SendVisitorChatMessageHandler(
 
         await unitOfWork.SaveChangesAsync(cancellationToken);
         notifier.ConversationChanged(conversation.Id);
+
+        if (teamWasUpToDate)
+        {
+            await teamNotifier.NotifyAsync(
+                new TeamAlert("💬 New chat message", [new("From", conversation.VisitorName)], command.Text, "/admin/chat"),
+                cancellationToken);
+        }
+
         return Result.Success();
     }
 }

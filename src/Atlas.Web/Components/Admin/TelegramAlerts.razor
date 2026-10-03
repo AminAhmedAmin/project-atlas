@@ -1,0 +1,155 @@
+@using Atlas.Application.Notifications
+@inject UseCases UseCases
+@inject ISnackbar Snackbar
+
+<MudPaper Outlined="true" Elevation="0" Class="pa-6 mb-4">
+    <div class="d-flex align-center gap-2 mb-1">
+        <MudIcon Icon="@Icons.Custom.Brands.Telegram" Style="color:#229ed9" />
+        <MudText Typo="Typo.h6" HtmlTag="h2">Telegram alerts</MudText>
+        <MudSpacer />
+        @if (_status?.IsConnected == true)
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Success" Variant="Variant.Text" Class="ma-0">On</MudChip>
+        }
+        else
+        {
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Text" Class="ma-0">Off</MudChip>
+        }
+    </div>
+    <MudText Typo="Typo.body2" Class="text-secondary mb-4">Get a Telegram message on your phone for every new contact message and live chat.</MudText>
+
+    @if (_status is null)
+    {
+        <MudProgressLinear Indeterminate="true" Color="Color.Primary" />
+    }
+    else if (!_status.IsBotConfigured)
+    {
+        <ol class="telegram-steps">
+            <li>In Telegram, open <strong>@@BotFather</strong>, send <code>/newbot</code> and follow the steps. Copy the token it gives you.</li>
+            <li>Add the token to your hosting settings as <code>Telegram__BotToken</code> (or with user-secrets when running locally), then restart the site.</li>
+            <li>Come back here to connect your chat.</li>
+        </ol>
+    }
+    else if (_status.IsConnected && !_choosing)
+    {
+        <MudText Typo="Typo.body2" Class="mb-4">Alerts are sent to <strong>@(_status.ChatTitle ?? _status.ChatId.ToString())</strong>.</MudText>
+        <div class="d-flex flex-wrap gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Primary" StartIcon="@Icons.Material.Outlined.NotificationsActive" Disabled="_busy" OnClick="SendTestAsync">Send test alert</MudButton>
+            <MudButton Variant="Variant.Text" Disabled="_busy" OnClick="FindChatsAsync">Change chat</MudButton>
+            <MudButton Variant="Variant.Text" Color="Color.Error" Disabled="_busy" OnClick="DisconnectAsync">Turn off</MudButton>
+        </div>
+    }
+    else
+    {
+        <ol class="telegram-steps">
+            <li>Open your bot in Telegram and send it any message (e.g. <code>/start</code>). For a team, add the bot to a group and send a message there.</li>
+            <li>Click <strong>Find chats</strong> and choose where alerts should go.</li>
+        </ol>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" StartIcon="@Icons.Material.Outlined.Search" Disabled="_busy" OnClick="FindChatsAsync">
+            @(_busy ? "Looking…" : "Find chats")
+        </MudButton>
+        @if (_chats is { Count: 0 })
+        {
+            <MudAlert Severity="Severity.Info" Dense="true" Class="mt-3">No chats found yet. Send a message to your bot first, then try again.</MudAlert>
+        }
+        else if (_chats is { Count: > 0 })
+        {
+            <MudList T="string" Dense="true" Class="mt-3 telegram-chats">
+                @foreach (var chat in _chats)
+                {
+                    <MudListItem T="string">
+                        <div class="d-flex align-center gap-2">
+                            <span dir="auto">@chat.Title</span>
+                            <MudSpacer />
+                            <MudButton Size="Size.Small" Variant="Variant.Filled" Color="Color.Primary" DropShadow="false" Disabled="_busy" OnClick="() => ConnectAsync(chat)">Use this chat</MudButton>
+                        </div>
+                    </MudListItem>
+                }
+            </MudList>
+        }
+    }
+
+    @if (_error is not null)
+    {
+        <MudAlert Severity="Severity.Error" Dense="true" Class="mt-3">@_error</MudAlert>
+    }
+</MudPaper>
+
+@code {
+    private TelegramStatusDto? _status;
+    private IReadOnlyList<Atlas.Application.Abstractions.TelegramChat>? _chats;
+    private bool _busy;
+    private bool _choosing;
+    private string? _error;
+
+    protected override Task OnInitializedAsync() => LoadAsync();
+
+    private async Task LoadAsync() =>
+        _status = await UseCases.QueryAsync<GetTelegramStatusQuery, TelegramStatusDto>(new());
+
+    private async Task FindChatsAsync()
+    {
+        await RunAsync(async () =>
+        {
+            _choosing = true;
+            var result = await UseCases.QueryAsync<FindTelegramChatsQuery, Result<IReadOnlyList<Atlas.Application.Abstractions.TelegramChat>>>(new());
+            if (result.IsSuccess)
+            {
+                _chats = result.Value;
+            }
+            else
+            {
+                _error = result.ErrorMessage;
+            }
+        });
+    }
+
+    private Task ConnectAsync(Atlas.Application.Abstractions.TelegramChat chat) => RunAsync(async () =>
+    {
+        var result = await UseCases.SendAsync(new ConnectTelegramCommand(chat.Id, chat.Title));
+        if (result.IsFailure)
+        {
+            _error = result.ErrorMessage;
+            return;
+        }
+
+        _choosing = false;
+        _chats = null;
+        await LoadAsync();
+        Snackbar.Add("Telegram connected. A confirmation message was sent to the chat.", Severity.Success);
+    });
+
+    private Task SendTestAsync() => RunAsync(async () =>
+    {
+        var result = await UseCases.SendAsync(new SendTestAlertCommand());
+        if (result.IsFailure)
+        {
+            _error = result.ErrorMessage;
+        }
+        else
+        {
+            Snackbar.Add("Test alert sent. Check Telegram.", Severity.Success);
+        }
+    });
+
+    private Task DisconnectAsync() => RunAsync(async () =>
+    {
+        await UseCases.SendAsync(new DisconnectTelegramCommand());
+        await LoadAsync();
+        Snackbar.Add("Telegram alerts turned off.", Severity.Info);
+    });
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _busy = true;
+        _error = null;
+        try
+        {
+            await action();
+        }
+        finally
+        {
+            _busy = false;
+        }
+    }
+}

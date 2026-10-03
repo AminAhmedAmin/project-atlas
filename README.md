@@ -14,7 +14,9 @@ server), **MudBlazor**, **EF Core 10** (SQL Server) and **ASP.NET Core Identity*
 - [Admin credentials](#admin-credentials)
 - [Database migrations](#database-migrations)
 - [Configuration reference](#configuration-reference)
+- [Telegram alerts](#telegram-alerts)
 - [Docker](#docker)
+- [Hosting without Docker](#hosting-without-docker)
 - [Deploying to Azure](#deploying-to-azure)
 - [Health checks and logging](#health-checks-and-logging)
 - [Tests and CI](#tests-and-ci)
@@ -29,14 +31,14 @@ work" steps, testimonials, FAQ and call to action), Services, About and Contact.
 - The contact form asks for name, e-mail, optional phone, the service of interest, a budget range
   (in SAR) and the message, and stores it in the database. "Ask about this service" links on the
   Services page preselect the service. A honeypot field and a short cooldown stop simple spam, and
-  the contact e-mail (if set) is notified.
+  the team gets a [Telegram alert](#telegram-alerts).
 - **Portfolio** at `/work` (and `/ar/work`): case studies with cover image, client, tags, results
   and story. Featured ones appear on the home page; the menu link appears once one is published.
 - **Live chat**: a chat bubble on every page (English and Arabic). Visitors leave their name, an
   optional e-mail or phone and a message; the team replies from **/admin/chat** and replies appear
   instantly. Conversations survive page reloads (an unguessable token is kept in the browser), and
-  visitors are rate-limited. New chats show a badge and a notification in the dashboard and are
-  e-mailed to the contact address.
+  visitors are rate-limited. New chats show a badge and a notification in the dashboard and send
+  a [Telegram alert](#telegram-alerts).
 - A floating **WhatsApp** button appears on every page once a WhatsApp number is set in
   **/admin/settings** (Saudi numbers like `05x xxx xxxx` are converted to `9665…` automatically).
 - **English and Arabic.** English pages live at `/…` and Arabic pages at `/ar/…`, with a
@@ -59,7 +61,8 @@ work" steps, testimonials, FAQ and call to action), Services, About and Contact.
   testimonials and client logos are seeded **hidden**: replace them with real ones before
   publishing.
 - **Services**: create, edit, reorder, publish/hide and delete services.
-- **Settings**: company name, tagline, contact e-mail, primary color and logo upload. Changes
+- **Settings**: company name, tagline, contact e-mail, WhatsApp number, primary color, logo upload
+  and [Telegram alerts](#telegram-alerts). Changes
   apply to every open page immediately.
 - **Portfolio**: create case studies per language with cover upload; mark them published and
   featured. A hidden sample shows the format.
@@ -82,7 +85,7 @@ The solution follows Clean Architecture. Dependencies point inwards only, and
         ┌──────────────▼───────┐    ┌───────────▼───────────────┐
         │ Atlas.Infrastructure │───►│ Atlas.Application         │
         │ EF Core, Identity,   │    │ use cases, handlers, DTOs,│
-        │ files, e-mail, seed  │    │ validation, interfaces    │
+        │ files, alerts, seed  │    │ validation, interfaces    │
         └──────────────────────┘    └───────────┬───────────────┘
                                                 │
                                     ┌───────────▼───────────────┐
@@ -95,8 +98,8 @@ The solution follows Clean Architecture. Dependencies point inwards only, and
 | Project | Responsibility |
 |---|---|
 | `src/Atlas.Domain` | Entities (`SiteSettings`, `PageContent`, `Service`, `ContentBlock`, `ContactMessage`), value objects (`HexColor`, `EmailAddress`) and invariants. Has no package references. |
-| `src/Atlas.Application` | One file per use case: a command or query record, an optional validator and a handler. Defines the interfaces for persistence, file storage, e-mail and user administration. Maps to DTOs by hand. |
-| `src/Atlas.Infrastructure` | `AtlasDbContext` (Identity + domain tables), repositories, migrations, `UserAdminService` over ASP.NET Core Identity, local file storage, a logging e-mail sender, the database seeder and the health check. |
+| `src/Atlas.Application` | One file per use case: a command or query record, an optional validator and a handler. Defines the interfaces for persistence, file storage, team alerts and user administration. Maps to DTOs by hand. |
+| `src/Atlas.Infrastructure` | `AtlasDbContext` (Identity + domain tables), repositories, migrations, `UserAdminService` over ASP.NET Core Identity, local file storage, the Telegram Bot API client, the database seeder and the health check. |
 | `src/Atlas.Web` | Blazor Web App: public pages, `/admin` dashboard, sign-in pages, DI wiring, health/SEO endpoints. |
 | `tests/*` | xUnit v3: domain rules, handlers (with in-memory fakes), infrastructure (SQLite, seeding, migration drift) and architecture rules. |
 
@@ -251,10 +254,29 @@ dotnet ef migrations script --idempotent \
 | `FileStorage:RootPath` | `App_Data/uploads` | Folder for uploaded files, relative to the content root or absolute |
 | `FileStorage:RequestPath` | `/uploads` | URL prefix for uploaded files |
 | `DataProtection:KeysPath` | *(empty)* | Folder where Data Protection keys are persisted (set in containers) |
+| `Telegram:BotToken` | *(empty)* | Bot token from @BotFather (a secret: use user-secrets or `Telegram__BotToken`). Alerts are off while empty |
+| `Telegram:SiteUrl` | *(empty)* | Public site address, e.g. `https://example.com`, for "Open dashboard" links in alerts |
 | `DisableHttpsRedirection` | `false` | Set `true` when TLS is not available at all (e.g. local compose) |
 
 The `Branding` values are only **defaults**. Once settings are saved in the dashboard, the
 database wins.
+
+## Telegram alerts
+
+The team gets a Telegram message for every new contact message, every new live chat, and when a
+visitor writes again in a chat the team had already read. No e-mail server is needed.
+
+1. In Telegram, open **@BotFather**, send `/newbot` and follow the steps. Copy the **token**.
+2. Give the token to the website as a secret, then restart it:
+   - locally: `dotnet user-secrets --project src/Atlas.Web set "Telegram:BotToken" "<token>"`
+   - on a host: environment variable `Telegram__BotToken=<token>` (and `Telegram__SiteUrl=https://your-site`).
+3. Send any message to your bot in Telegram (or add the bot to a team group and post there).
+4. In the dashboard open **Settings → Telegram alerts → Find chats**, pick the chat, and press
+   **Send test alert**.
+
+Alerts are best effort: if Telegram is unreachable the message is still saved and shown in the
+dashboard. Visitor text is HTML-escaped, and HTTP request logging is disabled for the Telegram
+client so the token (which is part of Bot API URLs) never reaches the logs.
 
 ## Docker
 
@@ -272,6 +294,24 @@ docker run -p 8080:8080 \
 
 `/app/App_Data` holds uploaded files and Data Protection keys, so mount a volume there.
 `docker-compose.yml` runs the site together with SQL Server for local testing.
+
+## Hosting without Docker
+
+Docker is optional. The app talks to SQL Server directly through
+`ConnectionStrings:DefaultConnection`; Docker is just one convenient way to install the app and
+SQL Server on a bare server. Without it:
+
+- **Hosting that includes SQL Server** (Azure App Service + Azure SQL, or Windows/.NET shared
+  hosting): run `dotnet publish src/Atlas.Web -c Release -o publish`, upload the `publish` folder,
+  and set the connection string and secrets in the host's control panel.
+- **Your own Linux server (VPS)**: install the ASP.NET Core 10 runtime and SQL Server (or SQL
+  Server Express, which is free) from Microsoft's package repositories, copy the published files,
+  run the app as a `systemd` service, and put Caddy or Nginx in front for HTTPS.
+- **A Windows server**: install the .NET 10 Hosting Bundle, SQL Server Express and IIS, then
+  publish to an IIS site.
+
+In every case, apply migrations with the EF bundle or SQL script described above, and point
+`FileStorage:RootPath` and `DataProtection:KeysPath` at folders that survive redeployments.
 
 ## Deploying to Azure
 
@@ -291,8 +331,7 @@ A typical setup is **Azure App Service (Linux, container or code)** plus **Azure
 7. Live chat pushes updates through the server's memory, which suits one instance. If you scale
    out to several instances, add a backplane (e.g. Azure SignalR Service or Redis) for
    `ChatNotifier`.
-8. Replace `LoggingEmailSender` with a real `IEmailSender` (e.g. Azure Communication Services or
-   SMTP) if you want notification e-mails to be sent.
+8. Set `Telegram__BotToken` and `Telegram__SiteUrl` to receive [Telegram alerts](#telegram-alerts).
 
 ## Health checks and logging
 

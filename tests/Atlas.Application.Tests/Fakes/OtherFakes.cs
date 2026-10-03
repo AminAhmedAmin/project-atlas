@@ -4,20 +4,39 @@ using Atlas.Application.Users;
 
 namespace Atlas.Application.Tests.Fakes;
 
-internal sealed class RecordingEmailSender : IEmailSender
+internal sealed class RecordingTeamNotifier : ITeamNotifier
 {
-    public List<EmailMessage> Sent { get; } = [];
+    public List<TeamAlert> Alerts { get; } = [];
 
-    public bool Fail { get; set; }
-
-    public Task SendAsync(EmailMessage message, CancellationToken cancellationToken = default)
+    public Task NotifyAsync(TeamAlert alert, CancellationToken cancellationToken = default)
     {
-        if (Fail)
+        Alerts.Add(alert);
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class FakeTelegramGateway : ITelegramGateway
+{
+    public bool IsConfigured { get; set; } = true;
+
+    /// <summary>When set, every call throws this delivery error.</summary>
+    public string? FailWith { get; set; }
+
+    public List<TelegramChat> Chats { get; } = [];
+
+    public List<(long ChatId, TeamAlert Alert)> Sent { get; } = [];
+
+    public Task<IReadOnlyList<TelegramChat>> GetRecentChatsAsync(CancellationToken cancellationToken = default) =>
+        FailWith is null ? Task.FromResult<IReadOnlyList<TelegramChat>>(Chats) : throw new AlertDeliveryException(FailWith);
+
+    public Task SendAlertAsync(long chatId, TeamAlert alert, CancellationToken cancellationToken = default)
+    {
+        if (FailWith is not null)
         {
-            throw new InvalidOperationException("SMTP down");
+            throw new AlertDeliveryException(FailWith);
         }
 
-        Sent.Add(message);
+        Sent.Add((chatId, alert));
         return Task.CompletedTask;
     }
 }

@@ -2,7 +2,6 @@ using Atlas.Application.Chat;
 using Atlas.Application.Common;
 using Atlas.Application.Tests.Fakes;
 using Atlas.Domain.Common;
-using Atlas.Domain.Settings;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Atlas.Application.Tests;
@@ -10,14 +9,13 @@ namespace Atlas.Application.Tests;
 public sealed class ChatHandlerTests
 {
     private readonly InMemoryChatRepository _chats = new();
-    private readonly InMemorySiteSettingsRepository _settings = new();
     private readonly RecordingChatNotifier _notifier = new();
-    private readonly RecordingEmailSender _email = new();
+    private readonly RecordingTeamNotifier _alerts = new();
     private readonly FakeUnitOfWork _unitOfWork = new();
 
     private async Task<StartChatResult> StartAsync(string message = "Hello")
     {
-        var handler = new StartChatHandler(_chats, _settings, _unitOfWork, _notifier, _email, new StartChatValidator(), TestData.Clock(), NullLogger<StartChatHandler>.Instance);
+        var handler = new StartChatHandler(_chats, _unitOfWork, _notifier, _alerts, new StartChatValidator(), TestData.Clock(), NullLogger<StartChatHandler>.Instance);
         var result = await handler.HandleAsync(new StartChatCommand("Sara", "0551234567", SiteLanguage.Arabic, message), TestContext.Current.CancellationToken);
         Assert.True(result.IsSuccess, result.ErrorMessage);
         return result.Value;
@@ -26,13 +24,13 @@ public sealed class ChatHandlerTests
     [Fact]
     public async Task Start_creates_conversation_with_secret_token_and_notifies()
     {
-        _settings.Settings = SiteSettings.Create("Co", null, HexColor.Create("#000000"), EmailAddress.Create("team@example.com"), TestData.Now.UtcDateTime);
-
         var started = await StartAsync();
 
         Assert.Equal(48, started.AccessToken.Length);
         Assert.Equal([started.ConversationId], _notifier.Notifications);
-        Assert.Equal("team@example.com", Assert.Single(_email.Sent).To);
+        var alert = Assert.Single(_alerts.Alerts);
+        Assert.Equal("Hello", alert.Body);
+        Assert.Equal("/admin/chat", alert.DashboardPath);
         Assert.Equal(1, await new GetUnreadChatCountHandler(_chats).HandleAsync(new(), TestContext.Current.CancellationToken));
     }
 
@@ -50,7 +48,7 @@ public sealed class ChatHandlerTests
     {
         var ct = TestContext.Current.CancellationToken;
         var started = await StartAsync();
-        var send = new SendVisitorChatMessageHandler(_chats, _unitOfWork, _notifier, TestData.Clock());
+        var send = new SendVisitorChatMessageHandler(_chats, _unitOfWork, _notifier, _alerts, TestData.Clock());
         var get = new GetVisitorChatHandler(_chats);
 
         var wrongToken = new string('0', 48);
@@ -104,11 +102,29 @@ public sealed class ChatHandlerTests
     [Fact]
     public async Task Start_requires_name_and_message()
     {
-        var handler = new StartChatHandler(_chats, _settings, _unitOfWork, _notifier, _email, new StartChatValidator(), TestData.Clock(), NullLogger<StartChatHandler>.Instance);
+        var handler = new StartChatHandler(_chats, _unitOfWork, _notifier, _alerts, new StartChatValidator(), TestData.Clock(), NullLogger<StartChatHandler>.Instance);
 
         var result = await handler.HandleAsync(new StartChatCommand(" ", null, SiteLanguage.English, ""), TestContext.Current.CancellationToken);
 
         Assert.Equal(["Name", "Message"], result.Errors.Select(e => e.Field));
         Assert.Empty(_chats.Conversations);
+    }
+
+    [Fact]
+    public async Task Follow_up_messages_alert_only_after_the_team_caught_up()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var started = await StartAsync();
+        var send = new SendVisitorChatMessageHandler(_chats, _unitOfWork, _notifier, _alerts, TestData.Clock());
+        var reply = new ReplyToChatHandler(_chats, _unitOfWork, _notifier, TestData.Clock());
+
+        await send.HandleAsync(new SendVisitorChatMessageCommand(started.ConversationId, started.AccessToken, "Anyone there?"), ct);
+        Assert.Single(_alerts.Alerts); // still unread: no extra alert for a burst of messages
+
+        await reply.HandleAsync(new ReplyToChatCommand(started.ConversationId, "admin", "Yes!"), ct);
+        await send.HandleAsync(new SendVisitorChatMessageCommand(started.ConversationId, started.AccessToken, "Great, thanks"), ct);
+
+        Assert.Equal(2, _alerts.Alerts.Count);
+        Assert.Equal("Great, thanks", _alerts.Alerts[^1].Body);
     }
 }
